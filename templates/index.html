@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线状态</title>
+</head>
+
+<body>
+    <div class="container">
+        <h1>你在干什么？</h1>
+        <h3>电脑</h3>
+        <div id="pcInfo" class="info-box"></div>
+        <h3>手机</h3>
+        <div id="phoneInfo" class="info-box"></div>
+        <h3>电脑浏览器</h3>
+        <div id="brInfo" class="info-box"></div>
+
+        <h1>Minecraft 服务器在线吗？</h1>
+        <div class="server-info">
+            <label for="serverAddress">Server Address:</label>
+            <input type="text" id="serverAddress" value="frp-fun.top:36194">
+            <!--  -->
+            <button onclick="fetchServerInfo()">查询</button>
+        </div>
+        <div id="serverInfo" class="info-box"></div>
+        <div id="serverLatency" class="info-box"></div>
+    </div>
+
+</body>
+<script>
+    function fetchServerInfo() {
+        const serverAddress = document.getElementById('serverAddress').value;
+        const serverInfoDiv = document.getElementById('serverInfo');
+        const pcInfo = document.getElementById('pcInfo');
+        const phoneInfo = document.getElementById('pcInfo');
+        const brInfo = document.getElementById('pcInfo');
+        const serverLatencyDiv = document.getElementById('serverLatency');
+        function playerde(p) {
+            s = ""
+            p.forEach(function (row, index) {
+                s += `<p title='${row["uuid"]}'> <img id="avatars" src="https://crafatar.com/avatars/${row["uuid"]}"/>  ${row["name"]}</p>`
+            });
+            return s
+        }
+        fetch(`/get_mcinfo/${serverAddress}`)
+            .then(response => {
+                contentType = response.headers.get('Content-Type');
+                if (!response.ok) {
+                    throw new Error(response.statusText);
+                }
+                return response.json(); // 直接解析JSON
+            })
+            .then(data => {
+                // console.log(data)
+                const version = data.version.name;
+                const protocol = data.version.protocol;
+                const onlinePlayers = data.players.online;
+                const maxPlayers = data.players.max;
+                const Players = data.players.sample;
+                const icon = data.icon;
+                const motd = data.motd.html;
+                console.log(Players);
+
+                serverInfoDiv.innerHTML = `
+                            <table id="serverTable">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th id="on">Online</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                   <tr> <td>version</td><td>${version}</td> </tr>
+                                    <tr><td>protocol</td> <td>${protocol}</td> </tr>
+                                    <tr><td>icon</td> <td><img src="${icon}"/></td> </tr>
+                                    <tr><td>motd</td> <td>${motd}</td> </tr>
+                                    <tr><td>onlinePlayers/maxPlayers</td><td>${onlinePlayers}/${maxPlayers}</td>  </tr>
+                                    <tr><td>Players</td><td>${playerde(Players)}</td> </tr>
+                                </tbody>
+                            </table>`;
+            })
+            .catch(error => {
+                serverInfoDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            });
+
+
+        // Fetch server latency
+        fetch(`/get_mclatency/${serverAddress}`)
+            .then(response => response.text())
+            .then(data => {
+                serverLatencyDiv.textContent = `Ping: ${data}`;
+            })
+            .catch(error => {
+                serverLatencyDiv.textContent = 'Error fetching server latency: ' + error;
+            });
+    }
+    function timeAgo(time) {
+        const now = new Date();
+        const past = new Date(time);
+        const seconds = Math.floor((now - past) / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (seconds < 60) {
+            return `${seconds}秒前`;
+        } else if (minutes < 60) {
+            return `${minutes}分钟前`;
+        } else if (hours < 24) {
+            return `${hours}小时前`;
+        } else {
+            return `${days}天前`;
+        }
+
+    }
+    function formatTimestamp(timestamp) {
+        // 将时间戳转换为毫秒
+        const date = new Date(timestamp * 1000);
+
+        // 获取年、月、日、小时、分钟和秒
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        // 组合成所需的格式
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+    function getpcinfo() {
+        pcInfo.innerHTML = "loading"
+        fetch(`/get_info`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                s = ""
+                for (let index = data.pc.length - 1; index >= 0; index--) {
+                    s += `<tr> <td>${data.pc[index].running_exe}</td><td>${timeAgo(data.pc[index].report_time)}</td> </tr>`
+                }
+                pcInfo.innerHTML = `
+                            <table class="Info">
+                                <thead>
+                                    <tr>
+                                        <th>name</th>
+                                        <th>time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                   ${s}
+                                </tbody>
+                            </table>`;
+                b = ""
+                for (let index = data.phone.length - 1; index >= 0; index--) {
+                    b += `<tr>
+                        <td>${data.phone[index].app}</td>
+                        <td>${data.phone[index].battery_level}</td>
+                        <td>${data.phone[index].wifi_ssid}</td>
+                        <td>${timeAgo(formatTimestamp(data.phone[index].report_time))}</td> 
+                        </tr>`
+                }
+                phoneInfo.innerHTML = `
+                            <table class="Info">
+                                <thead>
+                                    <tr>
+                                        <th>应用</th>
+                                        <th>电量</th>
+                                        <th>wifi信号</th>
+                                        <th>time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                   ${b}
+                                </tbody>
+                            </table>`;
+                a = ""
+                for (let index = data.browser.length - 1; index >= 0; index--) {
+                    a += `<tr> <td>${data.browser[index].title}</td><td>${data.browser[index].url}</td><td>${timeAgo(data.browser[index].report_time)}</td> </tr>`
+                }
+                brInfo.innerHTML = `
+                            <table class="Info">
+                                <thead>
+                                    <tr>
+                                        <th>title</th>
+                                        <th>url</th>
+                                        <th>time</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                   ${a}
+                                </tbody>
+                            </table>`;
+            })
+            .catch(error => {
+                pcInfo.innerHTML = `<p>Error: ${error.message}</p>`;
+            });
+    }
+    getpcinfo()
+</script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 20px;
+    }
+
+    .container {
+        max-width: 600px;
+        margin: auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .server-info {
+        margin-bottom: 20px;
+    }
+
+    label {
+        margin-right: 10px;
+        font-weight: bold;
+    }
+
+    input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+        font-size: 16px;
+        margin-right: 10px;
+        transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus {
+        border-color: #007bff;
+        /* Bootstrap primary color */
+        outline: none;
+        /* Remove the default focus outline */
+    }
+
+    button {
+        padding: 10px 20px;
+        background-color: #5cb85c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+    }
+
+    button:hover {
+        background-color: #4cae4c;
+    }
+
+    .info-box {
+        background-color: #eef;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        overflow-x: auto;
+    }
+
+    .info-box pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    button {
+        padding: 10px 20px;
+        background-color: #5cb85c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    button:hover {
+        background-color: #4cae4c;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+
+    #on {
+        color: #4cae4c;
+    }
+
+    #avatars {
+        width: 20px;
+    }
+</style>
+
+</html>

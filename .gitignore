@@ -1,0 +1,6 @@
+/config.toml
+.idea/
+__pycache__/
+report/log/
+/report/.pid
+data.json
