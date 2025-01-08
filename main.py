@@ -16,7 +16,7 @@ Data_limit = 6
 def load_secret_key():
     try:
         return toml.load("config.toml").get("SECRET_KEY")
-    except ImportError:
+    except Exception:
         print("config.toml 文件不存在或 SECRET_KEY 未定义。")
         with open('config.toml', 'w') as f:
             f.write("# SECRET_KEY = 'your SECRET_KEY'\n")
@@ -103,7 +103,7 @@ def pcinfo():
         else:
             return "error key"
     except Exception as e:
-        return str(e[:100])
+        return str(e)
 
 
 @app.route('/get_info', methods=['GET'])

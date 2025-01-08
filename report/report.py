@@ -98,7 +98,7 @@ def get_active_window_title():
     if active_window:
         if "Google Chrome" in active_window.title:
             return "Google Chrome"
-        if active_window.title == "LockingWindow":
+        if active_window.title == "LockingWindow" or active_window.title == "就像你看到的图像一样？选择以下选项":
             return "锁屏"
         return active_window.title
     else:

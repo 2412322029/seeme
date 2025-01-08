@@ -181,7 +181,11 @@
                             </table>`;
                 a = ""
                 for (let index = data.browser.length - 1; index >= 0; index--) {
-                    a += `<tr> <td>${data.browser[index].title}</td><td>${data.browser[index].url}</td><td>${timeAgo(data.browser[index].report_time)}</td> </tr>`
+                    a += `<tr> <td>${data.browser[index].title}</td>
+                    <td class="sh">
+                     <a target="_blank" href="${data.browser[index].url}" class="nowrap-ellipsis">${data.browser[index].url}</a>
+                    </td>
+                    <td>${timeAgo(data.browser[index].report_time)}</td> </tr>`
                 }
                 brInfo.innerHTML = `
                             <table class="Info">
@@ -204,6 +208,16 @@
     getpcinfo()
 </script>
 <style>
+     .nowrap-ellipsis {
+            white-space: nowrap; /* 不换行 */
+            overflow: hidden; /* 隐藏溢出的内容 */
+            text-overflow: ellipsis; /* 使用省略号表示溢出的内容 */
+            display: inline-block; /* 使元素可以设置宽度 */
+            max-width: 100%; /* 最大宽度为容器的100% */
+        }
+        .sh{
+            max-width: 200px;
+        }
     body {
         font-family: Arial, sans-serif;
         background-color: #f4f4f4;
