@@ -82,10 +82,12 @@ if not args.command:
     print("add -h to help")
 if report_key and not args.key:
     args.key = report_key
-    print(f"-k/--key ?,使用环境变量 report_key='{report_key[:6]}*******'")
+    if args.command not in ["log", "kill"]:
+        print(f"-k/--key ?,使用环境变量 report_key='{report_key[:6]}*******'")
 if report_url and not args.url:
     args.url = report_url
-    print(f"-u/--url ?,使用环境变量 {report_url=}")
+    if args.command not in ["log", "kill"]:
+        print(f"-u/--url ?,使用环境变量 {report_url=}")
 
 FORMAT = "%(asctime)-15s [%(levelname)s] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)

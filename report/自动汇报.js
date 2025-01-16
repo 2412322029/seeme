@@ -11,17 +11,29 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_registerMenuCommand
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=github.com
 // ==/UserScript==
 
 (function() {
     'use strict';
-     // 尝试从存储中获取 API_URL 和 SECRET
+    // 尝试从存储中获取 API_URL 和 SECRET
     const API_URL = GM_getValue('API_URL', '');
     const SECRET = GM_getValue('SECRET', '');
-
+    //console.log(API_URL,SECRET)
+    // 注册菜单
+    GM_registerMenuCommand('显示/重置 API_URL 和 SECRET', function() {
+        // 显示当前值
+        const message = `API_URL: ${API_URL}\nSECRET: ${SECRET}\n\n是否要重置这些值？`;
+        if (confirm(message)) {
+            GM_setValue('API_URL', '');
+            GM_setValue('SECRET', '');
+            alert('API_URL 和 SECRET 已重置');
+        }
+    });
     // 检查是否已经保存了 API_URL 和 SECRET
-    if (!API_URL || !SECRET) {
+    if (!API_URL | !SECRET) {
+
         // 如果没有保存，提示用户输入
         const api_url = prompt('请输入 API URL:', '');
         const secret = prompt('请输入 SECRET:', '');
@@ -51,21 +63,25 @@
         const postData = {
             "type": 'browser',
             "title": title,
+            "url" : url,
             "report_time": report_time
         };
+        const formData = Object.keys(postData).map(key => {
+            return encodeURIComponent(key) + '=' + encodeURIComponent(postData[key]);
+        }).join('&');
         GM_xmlhttpRequest({
             method: 'POST',
             url: API_URL+"/set_info",
-            data: JSON.stringify(postData),
+            data: formData,
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'API-KEY': SECRET
             },
             onload: (response) => {
                 if (response.status === 200) {
-                    showAlert(`API 请求成功: ${apiUrl}`);
+                    showAlert(`API 请求成功: ${url}`);
                 } else {
-                    showAlert(`API 请求失败: ${response.status} ${response.statusText}`);
+                    showAlert(`API 请求失败: ${response.status} ${response.statusText} ${response.response}`);
                 }
             },
             onerror: (error) => {
@@ -94,10 +110,11 @@
 
         document.body.appendChild(alertBox);
 
-        // 2秒后自动消失
+        // 3秒后自动消失
         setTimeout(() => {
             alertBox.remove();
-        }, 2000);
+        }, 3000);
+        console.log(message)
     }
 
     function createModal() {
@@ -175,7 +192,6 @@
         return modal;
     }
 
-
     const button = document.createElement('button');
     button.textContent = '↑';
     button.id = 'custom-upload-button';
@@ -198,13 +214,9 @@
         const modal = createModal();
         modal.style.display = 'block';
     });
-            button.addEventListener('contextmenu', (event) => {
-                event.preventDefault();
-                button.style.display = 'none';
-            })
+    button.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        button.style.display = 'none';
+    })
     document.body.appendChild(button);
-
-
-
-
 })();

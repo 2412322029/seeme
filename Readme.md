@@ -16,16 +16,33 @@ python main.py
 使用python脚本(安装pygetwindow)`pip insatll pygetwindow`
 
 report.py是一个报告命令行程序，定期向服务器发送当前正在玩儿什么，-h显示帮助
-如:`python(w) report.py run -u http://服务器地址/pcinfo -k 'your key'`
+如:`python(w) report.py run -u 服务器地址 -k 'your key'`
 
+
+添加命令别名和使用环境变量更加方便powershell打开个人配置文件`notepad $PROFILE`添加以下内容
+```powershell
+$env:REPORT_KEY="your key"
+$env:REPORT_URL="服务器地址"
+
+function get-report {
+    python path\to\report.py @Args
+}
+function get-reportw {
+    pythonw path\to\report.py @Args
+}
+Set-Alias -Name report -Value get-report
+Set-Alias -Name reportw -Value get-reportw
+```
 ### 浏览器端
 
 使用油猴脚本(安装油猴扩展,谷歌扩展商店下载)
-复制`自动汇报.js`内容到自定义新脚本，填写API_URL，SECRET
+复制`自动汇报.js`内容到自定义新脚本
+
+安装后首次弹窗输入key,api,油猴菜单查看/重置信息
 
 启用后右上角会有上传按钮,编辑确认好(当心url中的敏感信息,?参数默认全部去除)上传,在油猴中管理排除的网站
 
-### 安卓端
+### ~~安卓端~~
 
 使用MacroDroid,导入`自动汇报.macro`到软件,修改 动作>http请求>配置>查询参数中的key的值为your key
 
