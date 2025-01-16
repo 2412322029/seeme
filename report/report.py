@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import pygetwindow as gw
 
 import os
@@ -8,32 +10,82 @@ import logging
 import requests
 import argparse
 import subprocess
-from urllib.parse import quote
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-retry_times = 1
 # 尝试从环境变量中获取密钥和URL
 report_key = os.getenv('REPORT_KEY')
 report_url = os.getenv('REPORT_URL')
 
-parser = argparse.ArgumentParser(description='''定时报告程序，使用pythonw在后台运行(第一次用python前台运行查看是否没问题)
-如 python(w) report.py run -u http://127.0.0.1/pcinfo -k '密钥'
+parser = argparse.ArgumentParser(description='''定时报告程序，可以从环境变量中获取 REPORT_KEY 和 REPORT_URL
 ''')
 subparsers = parser.add_subparsers(dest='command', help='可用的命令')
 parser_status = subparsers.add_parser('status', help='查询进程状态')
 parser_log = subparsers.add_parser('log', help='查看最新日志')
 parser_kill = subparsers.add_parser('kill', help='杀死进程')
-parser_run = subparsers.add_parser('run', help='运行定时报告程序')
-parser_run.add_argument('-k', '--key', required=report_key is None, help='密钥')
-parser_run.add_argument('-u', '--url', required=report_url is None, help='api接口, 如: "http://127.0.0.1/info"')
+
+parent_key_parser = argparse.ArgumentParser(add_help=False)
+parent_key_parser.add_argument('-k', '--key', required=report_key is None, help='密钥')
+parent_url_parser = argparse.ArgumentParser(add_help=False)
+parent_url_parser.add_argument('-u', '--url', required=report_url is None, help='api接口, 如: http://127.0.0.1')
+
+parser_run = subparsers.add_parser('run', help='运行定时报告程序(使用pythonw可在后台运行)',
+                                   parents=[parent_key_parser, parent_url_parser])
 parser_run.add_argument('--test', action='store_true', help='测试api')
 parser_run.add_argument('-c', '--cycle_time', help='报告周期(单位秒)', default=600)
+# 服务器端命令
+parser_get = subparsers.add_parser('getlimit', help='获取服务器限制值', parents=[parent_url_parser])
+parser_get_info = subparsers.add_parser('getinfo', help='获取服务器数据', parents=[parent_url_parser])
+parser_get_info.add_argument('-t', '--type', help='数据类型如 pc phone..')
+
+parser_del_info = subparsers.add_parser('delinfo', help='删除服务器数据',
+                                        parents=[parent_key_parser, parent_url_parser])
+parser_del_info.add_argument('-t', '--type', required=True, help='要删除数据的类型，如 pc phone..')
+parser_del_info.add_argument('-rt', '--report_time', required=True, help='要删除数据的时间')
+
+
+class LimitAction(argparse.Action):
+    def __call__(self, pa, namespace, values, option_string=None):
+        if not hasattr(namespace, self.dest) or getattr(namespace, self.dest) is None:
+            setattr(namespace, self.dest, [])
+        limits = getattr(namespace, self.dest)
+
+        if len(values) % 2 != 0:
+            raise argparse.ArgumentError(self, "--type-number 后面参数必须成对出现(type and number)")
+        for i in range(0, len(values), 2):
+            limit_type = values[i]
+            if limit_type not in ['pc', 'browser', 'phone']:
+                raise argparse.ArgumentError(self, f"无效的限制类型: {limit_type}")
+            try:
+                limit_number = int(values[i + 1])
+                if limit_number < 0 or limit_number > 100:
+                    raise argparse.ArgumentError(self, f"限制行数必须在0到100之间: {limit_number}")
+            except ValueError:
+                raise argparse.ArgumentError(self, f"限制行数必须是整数: {values[i + 1]}")
+            limits.append((limit_type, limit_number))
+        setattr(namespace, self.dest, limits)
+
+
+parser_set = subparsers.add_parser('setlimit', help='设置服务器数据最大个数',
+                                   parents=[parent_key_parser, parent_url_parser])
+parser_set.add_argument('-tn', '--type-number', nargs='+', action=LimitAction, required=True,
+                        dest='limits', help="限制类型 'pc', 'browser', 'phone' 和对应的限制行数")
 
 args = parser.parse_args()
+# 确保 args.key 和 args.url 存在
+if not hasattr(args, 'key'):
+    args.key = None
+if not hasattr(args, 'url'):
+    args.url = None
 if not args.command:
     print("add -h to help")
+if report_key and not args.key:
+    args.key = report_key
+    print(f"-k/--key ?,使用环境变量 report_key='{report_key[:6]}*******'")
+if report_url and not args.url:
+    args.url = report_url
+    print(f"-u/--url ?,使用环境变量 {report_url=}")
 
 FORMAT = "%(asctime)-15s [%(levelname)s] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -130,29 +182,81 @@ def get_active_window_title() -> str:
 
 
 # 发送数据到Flask API
-def send_data_to_api(running_exe, report_time):
-    global retry_times
-    url = args.url
+def send_data_to_api(running_exe, report_time, retry_times=1):
+    url = args.url + "/set_info"
+    headers = {
+        'API-KEY': args.key
+    }
     payload = {
-        'key': args.key,
         'type': 'pc',
-        'running_exe': quote(running_exe),  # 进行URL编码
+        'running_exe': running_exe,
         'report_time': report_time
     }
     try:
-        response = requests.get(url, params=payload)
-        msg = response.text
-        if "error key" in msg:
-            logger.error(f"{url=},{str(payload)=},key={args.key} error key")
+        response = requests.post(url, headers=headers, data=payload)
+        if response.status_code != 200:
+            logger.error(f"{url=},{headers=},{str(payload)=},{response.text}")
         else:
-            logger.info(f"{running_exe}  {msg}")
+            logger.info(f"{running_exe}  {response.text}")
     except Exception as e:
         msg = str(e)
         logger.error(f"{url=},{str(payload)=},{msg=}")
-        if retry_times:
-            logger.info(f"{retry_times=}")
-            send_data_to_api(running_exe, report_time)
-            retry_times -= 1
+        if retry_times > 0:
+            logger.info(f"Retrying... {retry_times=}")
+            send_data_to_api(running_exe, report_time, retry_times - 1)
+
+
+def get_limit():
+    response = requests.get(args.url + "/get_limit").text
+    print(response)
+
+
+def set_limit():
+    url = args.url + "/set_limit"
+    headers = {
+        'API-KEY': args.key
+    }
+    try:
+        payload = {limit_type: limit_number for limit_type, limit_number in args.limits}
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            logger.info(f"Limits set successfully: {response.json()}")
+        else:
+            logger.error(f"Failed to set limits: {response.status_code} - {response.text}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {str(e)}")
+    except ValueError as e:
+        logger.error(f"JSON error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+
+
+def get_info():
+    response = requests.get(args.url + f"/get_info?type={args.type}").json()
+    pprint(response)
+
+
+def del_info():
+    headers = {
+        'API-KEY': args.key,
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'type': args.type,
+        'report_time': args.report_time
+    }
+    try:
+        response = requests.post(args.url + "/del_info", headers=headers, json=payload)
+        if response.status_code == 200:
+            res = response.json()
+            print(f"{res['message']}")
+            pprint(f"{res['item']}")
+        elif response.status_code == 404:
+            logger.error(f"{response.text}")
+        else:
+            logger.error(f"Failed to delete items: {response.status_code} - {response.text}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request error: {str(e)}")
 
 
 def logcat():
@@ -186,8 +290,8 @@ if __name__ == "__main__":
 
     if args.command == 'run':
         logger.info("start".center(50, '-'))
-        logger.info(f"环境变量 {report_url=},{report_key=}".center(50, ' '))
-        logger.info(f"{args.url=},{args.key=}".center(50, ' '))
+        logger.info(f"环境变量 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
+        logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, ' '))
         if args.test:
             # time.sleep(1)
             title_t = get_active_window_title()
@@ -209,3 +313,11 @@ if __name__ == "__main__":
         kill_process()
     elif args.command == 'log':
         logcat()
+    elif args.command == 'getlimit':
+        get_limit()
+    elif args.command == 'setlimit':
+        set_limit()
+    elif args.command == 'getinfo':
+        get_info()
+    elif args.command == 'delinfo':
+        del_info()

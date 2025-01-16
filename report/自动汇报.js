@@ -1,11 +1,13 @@
 // ==UserScript==
 // @name         自动汇报
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  try to take over the world!
 // @author       You
 // @match        http://*/*
 // @match        https://*/*
+// @updateURL    https://raw.githubusercontent.com/2412322029/seeme/master/report/%E8%87%AA%E5%8A%A8%E6%B1%87%E6%8A%A5.js
+// @downloadURL  https://raw.githubusercontent.com/2412322029/seeme/master/report/%E8%87%AA%E5%8A%A8%E6%B1%87%E6%8A%A5.js
 // @grant        GM_xmlhttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -14,8 +16,24 @@
 
 (function() {
     'use strict';
-    const API_URL = ''
-    const SECRET = ''
+     // 尝试从存储中获取 API_URL 和 SECRET
+    const API_URL = GM_getValue('API_URL', '');
+    const SECRET = GM_getValue('SECRET', '');
+
+    // 检查是否已经保存了 API_URL 和 SECRET
+    if (!API_URL || !SECRET) {
+        // 如果没有保存，提示用户输入
+        const api_url = prompt('请输入 API URL:', '');
+        const secret = prompt('请输入 SECRET:', '');
+
+        // 保存用户输入的值
+        GM_setValue('API_URL', api_url);
+        GM_setValue('SECRET', secret);
+
+        // 重新获取保存的值
+        const API_URL = GM_getValue('API_URL');
+        const SECRET = GM_getValue('SECRET');
+    }
 
 
     let lastReport = GM_getValue('lastReport', { url: '', title: '', timestamp: 0 });
@@ -30,15 +48,22 @@
         //   showAlert('相同的 URL 和标题，且未超过一分钟，不发送请求');
         //  return;
         //  }
-
-        const apiUrl = `${API_URL}?key=${encodeURIComponent(SECRET)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=browser&report_time=${encodeURIComponent(report_time)}`;
-
+        const postData = {
+            "type": 'browser',
+            "title": title,
+            "report_time": report_time
+        };
         GM_xmlhttpRequest({
-            method: 'GET',
-            url: apiUrl,
+            method: 'POST',
+            url: API_URL+"/set_info",
+            data: JSON.stringify(postData),
+            headers: {
+                'Content-Type': 'application/json',
+                'API-KEY': SECRET
+            },
             onload: (response) => {
                 if (response.status === 200) {
-                    showAlert(`API 请求成功: ${url}`);
+                    showAlert(`API 请求成功: ${apiUrl}`);
                 } else {
                     showAlert(`API 请求失败: ${response.status} ${response.statusText}`);
                 }

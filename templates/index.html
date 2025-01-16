@@ -153,7 +153,7 @@
                             <td title="${data.pc[index].running_exe}">
                             ${checkGoogleChrome(data.pc[index].running_exe)}
                             </td>
-                            <td>
+                            <td title="${data.pc[index].report_time}">
                             ${timeAgo(data.pc[index].report_time)}
                             </td>
                            </tr>`
@@ -176,7 +176,9 @@
                         <td>${data.phone[index].app}</td>
                         <td>${data.phone[index].battery_level}</td>
                         <td>${data.phone[index].wifi_ssid}</td>
-                        <td>${timeAgo(formatTimestamp(data.phone[index].report_time))}</td> 
+                        <td title="${data.phone[index].report_time}">
+                            ${timeAgo(formatTimestamp(data.phone[index].report_time))}
+                        </td>
                         </tr>`
                 }
                 phoneInfo.innerHTML = `
@@ -199,7 +201,7 @@
                     <td class="sh">
                      <a target="_blank" href="${data.browser[index].url}" class="nowrap-ellipsis">${data.browser[index].url}</a>
                     </td>
-                    <td>${timeAgo(data.browser[index].report_time)}</td> </tr>`
+                    <td title="${data.browser[index].report_time}">${timeAgo(data.browser[index].report_time)}</td> </tr>`
                 }
                 brInfo.innerHTML = `
                             <table class="Info">

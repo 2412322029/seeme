@@ -2,21 +2,22 @@ import json
 import os
 import re
 import toml
-from flask import Flask, render_template, request
-from urllib.parse import unquote
-
+from flask import Flask, render_template, request, jsonify
 from mcinfo import mcinfo, mclatency
 
 app = Flask(__name__)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_file = os.path.join(script_dir, 'data.json')
-Data_limit = 6
+Data_limit_pc = 6
+Data_limit_browser = 6
+Data_limit_phone = 6
 
 
-def load_secret_key():
+def load_cfg():
     try:
-        return toml.load(os.path.join(script_dir, "config.toml")).get("SECRET_KEY")
+        tm = toml.load(os.path.join(script_dir, "config.toml"))
+        return tm.get("SECRET_KEY")
     except Exception:
         print("config.toml 文件不存在或 SECRET_KEY 未定义。")
         with open('config.toml', 'w') as f:
@@ -25,7 +26,7 @@ def load_secret_key():
         exit()
 
 
-SECRET_KEY = load_secret_key()
+SECRET_KEY = load_cfg()
 
 
 def load_data():
@@ -43,9 +44,9 @@ def save_data(d):
 data = load_data()
 
 
-def limit(d: list):
-    if len(d) > Data_limit:
-        del d[:-Data_limit]
+def limit(d: list, dl: int):
+    if len(d) > dl:
+        del d[:-dl]
 
 
 def is_valid_address(address: str) -> bool:
@@ -74,42 +75,120 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/info', methods=['GET'])
-def pcinfo():
+@app.route('/set_info', methods=['POST'])
+def set_info():
     try:
-        key = request.args.get("key")
-        if key == SECRET_KEY:
-            info_type = request.args.get('type')
-            report_time = request.args.get("report_time")
-            match info_type:
-                case "pc":
-                    running_exe = unquote(request.args.get("running_exe"))
-                    data["pc"].append({"running_exe": running_exe, "report_time": report_time})
-                    limit(data["pc"])
-                case "browser":
-                    title = request.args.get("title")
-                    url = request.args.get("url")
-                    data["browser"].append({"title": title, "url": url, "report_time": report_time})
-                    limit(data["browser"])
-                case "phone":
-                    apps = request.args.get("app")
-                    battery_level = request.args.get("battery_level")
-                    wifi_ssid = request.args.get("wifi_ssid")
-                    data["phone"].append({"app": apps, "battery_level": battery_level,
-                                          "wifi_ssid": wifi_ssid, "report_time": report_time})
-                    limit(data["phone"])
-                case _:
-                    return "unknown type"
-            return "ok"
-        else:
-            return "error key"
+        key = request.headers.get('API-KEY')
+        if key != SECRET_KEY:
+            return jsonify({"error": "Invalid key"}), 403
+        info_type = request.form.get('type')
+        report_time = request.form.get("report_time")
+        match info_type:
+            case "pc":
+                running_exe = request.form.get("running_exe")
+                data["pc"].append({"running_exe": running_exe, "report_time": report_time})
+                limit(data["pc"], Data_limit_pc)
+            case "browser":
+                title = request.form.get("title")
+                url = request.form.get("url")
+                data["browser"].append({"title": title, "url": url, "report_time": report_time})
+                limit(data["browser"], Data_limit_browser)
+            case "phone":
+                apps = request.form.get("app")
+                battery_level = request.form.get("battery_level")
+                wifi_ssid = request.form.get("wifi_ssid")
+                data["phone"].append({"app": apps, "battery_level": battery_level,
+                                      "wifi_ssid": wifi_ssid, "report_time": report_time})
+                limit(data["phone"], Data_limit_phone)
+            case _:
+                return jsonify({"error": "unknown type"}), 400
+        return jsonify({"status": "ok"}), 200
     except Exception as e:
-        return str(e)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/get_info', methods=['GET'])
-def get_pcinfo():
-    return data
+def get_info():
+    t = request.args.get("type")
+    if t in ["pc", "browser", "phone"]:
+        return data[t]
+    else:
+        return data
+
+
+@app.route('/del_info', methods=['POST'])
+def del_info():
+    key = request.headers.get('API-KEY')
+    if key != SECRET_KEY:
+        return jsonify({"error": "Invalid key"}), 403
+    info_type = request.json.get('type')
+    report_time = request.json.get('report_time')
+    if info_type in data:
+        initial_count = len(data[info_type])
+        removed_items = [item for item in data[info_type] if item['report_time'] == report_time]
+        data[info_type] = [item for item in data[info_type] if item['report_time'] != report_time]
+        removed_count = initial_count - len(data[info_type])
+        if removed_count > 0:
+            save_data(data)
+            return jsonify(
+                {"message": f"Removed {removed_count} item(s) from {info_type}", "item": f"{removed_items}"}), 200
+        else:
+            return jsonify({"message": "No items found with the specified report_time"}), 404
+    else:
+        return jsonify({"message": "Type not found"}), 404
+
+
+def validate_limit(value, name):
+    try:
+        value = int(value)
+        if value < 1 or value > 100:
+            return f"{name} limit must be between 1 and 100"
+    except ValueError:
+        return f"{name} limit must be an integer"
+    return None
+
+
+@app.route('/set_limit', methods=['POST'])
+def set_limit():
+    global Data_limit_pc
+    global Data_limit_browser
+    global Data_limit_phone
+    key = request.headers.get('API-KEY')
+    if key != SECRET_KEY:
+        return jsonify({"message": "Invalid key"}), 403
+
+    new_limits = request.get_json()
+    if not new_limits:
+        return jsonify({"message": "No data provided"}), 400
+
+    errors = []
+    for device, value in new_limits.items():
+        if device in ['pc', 'browser', 'phone']:
+            error = validate_limit(value, device)
+            if error:
+                errors.append(error)
+            else:
+                globals()[f"Data_limit_{device}"] = int(value)
+        else:
+            errors.append("unknown type")
+
+    if errors:
+        return jsonify({"message": errors}), 400
+
+    return jsonify({
+        'pc': Data_limit_pc,
+        'browser': Data_limit_browser,
+        'phone': Data_limit_phone
+    }), 200
+
+
+@app.route('/get_limit', methods=['GET'])
+def get_limit():
+    return jsonify({
+        'pc': Data_limit_pc,
+        'browser': Data_limit_browser,
+        'phone': Data_limit_phone
+    }), 200
 
 
 @app.teardown_request
