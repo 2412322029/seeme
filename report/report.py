@@ -1,7 +1,7 @@
 import signal
 import time
 from urllib.parse import quote
-
+import subprocess
 import pygetwindow as gw
 import requests
 from datetime import datetime
@@ -11,6 +11,8 @@ from logging.handlers import TimedRotatingFileHandler
 import argparse
 import ctypes
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+retry_times = 1
 parser = argparse.ArgumentParser(description='''定时报告程序，使用pythonw在后台运行(第一次用python前台运行查看是否没问题)
 如 python(w) report.py run -u http://127.0.0.1/pcinfo -k '密钥'
 ''')
@@ -28,11 +30,13 @@ if not args.command:
 FORMAT = "%(asctime)-15s [%(levelname)s] %(message)s"
 logging.basicConfig(format=FORMAT, level=logging.INFO)
 logger = logging.getLogger("main")
-if not os.path.exists("log"):
-    os.makedirs("log")
+
+log_dir = os.path.join(script_dir, 'log')
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
 
 # 创建文件日志处理程序
-file_handler = TimedRotatingFileHandler("log/report.log", when="midnight", interval=1, backupCount=10, encoding="utf-8")
+file_handler = TimedRotatingFileHandler(os.path.join(log_dir, 'report.log'), when="midnight", interval=1, backupCount=10, encoding="utf-8")
 file_handler.setFormatter(logging.Formatter(FORMAT))
 logger.addHandler(file_handler)
 
@@ -58,7 +62,7 @@ def is_process_running(pid):
 
 def read_pid():
     try:
-        with open(".pid", 'r') as f:
+        with open(os.path.join(script_dir, '.pid'), 'r') as f:
             pid = int(f.read())
         return pid
     except FileNotFoundError:
@@ -71,13 +75,26 @@ def check_process():
         print(f"进程ID: {pid}")
         if is_process_running(pid):
             print(f"进程正在运行")
-            return True
+            # 获取进程的命令行参数
+            cmdline_result = subprocess.run(
+                ['wmic', 'process', 'where', f'ProcessId={pid}', 'get', 'CommandLine', '/value'],
+                capture_output=True, text=True, check=True
+            )
+            cmdline = cmdline_result.stdout.strip().split('=')[1] if '=' in cmdline_result.stdout else 'N/A'
+
+            # 获取进程的内存使用情况
+            memusage_result = subprocess.run(
+                ['wmic', 'process', 'where', f'ProcessId={pid}', 'get', 'WorkingSetSize', '/value'],
+                capture_output=True, text=True, check=True
+            )
+            memusage = int(memusage_result.stdout.strip().split('=')[1]) if '=' in memusage_result.stdout else 0
+            memusage_mb = memusage // 1024**2
+            print(f"工作集内存使用: {memusage_mb} MB")
+            print(f"命令行参数: {cmdline}")
         else:
             print("进程已停止.")
-            return False
     except (FileNotFoundError, ValueError):
         print("没有找到进程ID文件或进程不存在.")
-        return False
 
 
 def kill_process():
@@ -107,18 +124,24 @@ def get_active_window_title():
 
 # 发送数据到Flask API
 def send_data_to_api(running_exe, report_time):
+    global retry_times
+    url = args.url
+    payload = {
+        'key': args.key,
+        'type': 'pc',
+        'running_exe': quote(running_exe),  # 进行URL编码
+        'report_time': report_time
+    }
     try:
-        url = args.url
-        payload = {
-            'key': args.key,
-            'type': 'pc',
-            'running_exe': quote(running_exe),  # 进行URL编码
-            'report_time': report_time
-        }
         response = requests.get(url, params=payload)
         msg = response.text
+        if "error key" in msg:
+            msg = f"key={args.key} error key"
     except Exception as e:
         msg = str(e)
+        if msg.startswith("HTTP") and retry_times:
+            send_data_to_api(running_exe, report_time)
+            retry_times -= 1
     return msg
 
 
@@ -140,9 +163,10 @@ if __name__ == "__main__":
         p = read_pid()
         if is_process_running(p):
             print(f"进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
+            check_process()
             exit(0)
         # 保存进程ID到文件
-        with open('.pid', 'w') as f:
+        with open(os.path.join(script_dir, '.pid'), 'w') as f:
             f.write(str(os.getpid()))
         main()
     elif args.command == 'status':

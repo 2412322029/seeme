@@ -9,13 +9,13 @@ from mcinfo import mcinfo, mclatency
 
 app = Flask(__name__)
 
-data_file = 'data.json'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+data_file = os.path.join(script_dir, 'data.json')
 Data_limit = 6
-
 
 def load_secret_key():
     try:
-        return toml.load("config.toml").get("SECRET_KEY")
+        return toml.load(os.path.join(script_dir, "config.toml")).get("SECRET_KEY")
     except Exception:
         print("config.toml 文件不存在或 SECRET_KEY 未定义。")
         with open('config.toml', 'w') as f:
