@@ -130,6 +130,13 @@
         // 组合成所需的格式
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
+    function checkGoogleChrome(str) { // 或许不应该直接显示浏览器标题(´。＿。｀)
+        if (str.includes("Google Chrome")) {
+            return "Google Chrome";
+        } else {
+            return str;
+        }
+    }
     function getpcinfo() {
         pcInfo.innerHTML = "loading"
         fetch(`/get_info`)
@@ -142,7 +149,14 @@
             .then(data => {
                 s = ""
                 for (let index = data.pc.length - 1; index >= 0; index--) {
-                    s += `<tr> <td>${data.pc[index].running_exe}</td><td>${timeAgo(data.pc[index].report_time)}</td> </tr>`
+                    s += `<tr>
+                            <td title="${data.pc[index].running_exe}">
+                            ${checkGoogleChrome(data.pc[index].running_exe)}
+                            </td>
+                            <td>
+                            ${timeAgo(data.pc[index].report_time)}
+                            </td>
+                           </tr>`
                 }
                 pcInfo.innerHTML = `
                             <table class="Info">

@@ -13,6 +13,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 data_file = os.path.join(script_dir, 'data.json')
 Data_limit = 6
 
+
 def load_secret_key():
     try:
         return toml.load(os.path.join(script_dir, "config.toml")).get("SECRET_KEY")
