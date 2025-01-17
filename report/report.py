@@ -18,6 +18,12 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 report_key = os.getenv('REPORT_KEY')
 report_url = os.getenv('REPORT_URL')
 
+def positive_int(value):
+    ivalue = int(value)
+    if ivalue <= 0:
+        raise argparse.ArgumentTypeError(f"{value} is not a positive integer")
+    return ivalue
+
 parser = argparse.ArgumentParser(description='''定时报告程序，可以从环境变量中获取 REPORT_KEY 和 REPORT_URL
 ''')
 subparsers = parser.add_subparsers(dest='command', help='可用的命令')
@@ -33,7 +39,7 @@ parent_url_parser.add_argument('-u', '--url', required=report_url is None, help=
 parser_run = subparsers.add_parser('run', help='运行定时报告程序(使用pythonw可在后台运行)',
                                    parents=[parent_key_parser, parent_url_parser])
 parser_run.add_argument('--test', action='store_true', help='测试api')
-parser_run.add_argument('-c', '--cycle_time', help='报告周期(单位秒)', default=600)
+parser_run.add_argument('-c', '--cycle_time', type=positive_int, help='报告周期(单位秒)', default=600)
 # 服务器端命令
 parser_get = subparsers.add_parser('getlimit', help='获取服务器限制值', parents=[parent_url_parser])
 parser_get_info = subparsers.add_parser('getinfo', help='获取服务器数据', parents=[parent_url_parser])
@@ -285,7 +291,7 @@ def main():
         title = get_active_window_title()
         times = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         send_data_to_api(title, times)
-        time.sleep(args.cycle_time)
+        time.sleep(int(args.cycle_time))
 
 
 if __name__ == "__main__":
@@ -295,7 +301,7 @@ if __name__ == "__main__":
         logger.info(f"环境变量 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
         logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, ' '))
         if args.test:
-            # time.sleep(1)
+            time.sleep(1)
             title_t = get_active_window_title()
             time_t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             send_data_to_api(title_t, time_t)

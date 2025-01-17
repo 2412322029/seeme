@@ -9,24 +9,26 @@ app = Flask(__name__)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 data_file = os.path.join(script_dir, 'data.json')
-Data_limit_pc = 6
-Data_limit_browser = 6
-Data_limit_phone = 6
+cfg_path = os.path.join(script_dir, "config.toml")
+if not os.path.exists(cfg_path):
+    raise FileNotFoundError("config.toml not found")
+cfg = toml.load(cfg_path)
+Data_limit_pc = cfg.get("Data_limit_pc", 6)
+Data_limit_browser = cfg.get("Data_limit_browser", 6)
+Data_limit_phone = cfg.get("Data_limit_phone", 6)
+SECRET_KEY = cfg.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY not found")
 
 
-def load_cfg():
-    try:
-        tm = toml.load(os.path.join(script_dir, "config.toml"))
-        return tm.get("SECRET_KEY")
-    except Exception:
-        print("config.toml 文件不存在或 SECRET_KEY 未定义。")
-        with open('config.toml', 'w') as f:
-            f.write("# SECRET_KEY = 'your SECRET_KEY'\n")
-        print("config.toml 文件已创建，在config.toml中设置SECRET_KEY")
-        exit()
-
-
-SECRET_KEY = load_cfg()
+def save_cfg():
+    with open(cfg_path, 'w') as f:
+        toml.dump({
+            "SECRET_KEY": SECRET_KEY,
+            "Data_limit_pc": Data_limit_pc,
+            "Data_limit_browser": Data_limit_browser,
+            "Data_limit_phone": Data_limit_phone,
+        }, f)
 
 
 def load_data():
@@ -59,7 +61,7 @@ def get_mcinfo(address: str):
     if is_valid_address(address):
         return mcinfo(address)
     else:
-        return f"{address} <host:port> 错误的地址"
+        return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
 
 @app.route('/get_mclatency/<address>')
@@ -67,7 +69,7 @@ def get_mclatency(address: str):
     if is_valid_address(address):
         return mclatency(address)
     else:
-        return f"{address} <host:port> 错误的地址"
+        return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
 
 @app.route('/')
@@ -111,7 +113,7 @@ def set_info():
 def get_info():
     t = request.args.get("type")
     if t in ["pc", "browser", "phone"]:
-        return data[t]
+        return {t: data[t]}
     else:
         return data
 
@@ -150,9 +152,7 @@ def validate_limit(value, name):
 
 @app.route('/set_limit', methods=['POST'])
 def set_limit():
-    global Data_limit_pc
-    global Data_limit_browser
-    global Data_limit_phone
+    global Data_limit_pc, Data_limit_phone, Data_limit_browser
     key = request.headers.get('API-KEY')
     if key != SECRET_KEY:
         return jsonify({"message": "Invalid key"}), 403
@@ -174,7 +174,7 @@ def set_limit():
 
     if errors:
         return jsonify({"message": errors}), 400
-
+    save_cfg()
     return jsonify({
         'pc': Data_limit_pc,
         'browser': Data_limit_browser,
@@ -194,6 +194,7 @@ def get_limit():
 @app.teardown_request
 def teardown_request(response_or_error):
     save_data(data)
+    save_cfg()
     return response_or_error
 
 
