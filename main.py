@@ -2,7 +2,7 @@ import json
 import os
 import re
 import toml
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from mcinfo import mcinfo, mclatency
 
 app = Flask(__name__)
@@ -33,7 +33,7 @@ def save_cfg():
 
 def load_data():
     if os.path.exists(data_file):
-        with open(data_file, 'r') as f:
+        with open(data_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {"pc": [], "browser": [], "phone": []}
 
@@ -75,6 +75,12 @@ def get_mclatency(address: str):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/<path:filename>')
+def template_proxy(filename):
+    template_dir = os.path.join(app.root_path, 'templates')
+    return send_from_directory(template_dir, filename)
 
 
 @app.route('/set_info', methods=['POST'])
