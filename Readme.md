@@ -12,8 +12,7 @@ redis相关配置为默认本机。Data_limit_default是默认限制条数，red
 报告端任选，有对应报告端就有对应数据显示(都在report文件夹中)
 ### pc报告端
 
-使用python脚本(安装pygetwindow)`pip insatll pygetwindow`
-
+使用python脚本
 report.py是一个报告命令行程序，定期向服务器发送当前正在玩儿什么，-h显示帮助
 如:`python(w) report.py run -u 服务器地址 -k 'your key'`
 

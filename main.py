@@ -51,7 +51,10 @@ def set_info():
         match info_type:
             case "pc":
                 running_exe = request.form.get("running_exe")
-                put_data("pc", {"running_exe": running_exe, "report_time": report_time})
+                exe_name = request.form.get("exe_name")
+                img_base64 = request.form.get("img_base64")
+                put_data("pc", {"running_exe": running_exe, "exe_name": exe_name, "img_base64": img_base64,
+                                "report_time": report_time})
             case "browser":
                 title = request.form.get("title")
                 url = request.form.get("url")

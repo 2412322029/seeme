@@ -1,15 +1,19 @@
-from pprint import pprint
-
-import pygetwindow as gw
+from PIL import Image  # pip install pillow
+import psutil  # pip install psutil
+import win32process  # pip install pywin32
+import win32gui
+import win32ui
 
 import os
 import time
+import base64
 import signal
-import ctypes
 import logging
 import requests
 import argparse
 import subprocess
+from io import BytesIO
+from pprint import pprint
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 
@@ -108,32 +112,30 @@ file_handler = TimedRotatingFileHandler(logfile, when="midnight", interval=1,
 file_handler.setFormatter(logging.Formatter(FORMAT))
 logger.addHandler(file_handler)
 
-kernel32 = ctypes.windll.kernel32
-
 
 # 获取进程句柄
-def GetProcessHandle(pid):
-    handle = kernel32.OpenProcess(0x0400, False, pid)
-    return handle
-
-
 # 检查进程是否存在
 def is_process_running(pid):
-    handle = GetProcessHandle(pid)
-    if handle:
-        kernel32.CloseHandle(handle)
-        return True
-    else:
+    try:
+        process = psutil.Process(pid)
+        return process.is_running()
+    except psutil.NoSuchProcess:
         return False
 
 
+# 读取进程ID文件
 def read_pid():
+    pid_file_path = os.path.join(script_dir, '.pid')
     try:
-        with open(os.path.join(script_dir, '.pid'), 'r') as fi:
+        with open(pid_file_path, 'r') as fi:
             pid = int(fi.read())
         return pid
     except FileNotFoundError:
         print("没有找到进程ID文件.")
+        return None
+    except ValueError:
+        print("进程ID文件内容无效.")
+        return None
 
 
 def check_process():
@@ -174,23 +176,43 @@ def kill_process():
         print(f"杀死进程时出错: {e}")
 
 
-def get_active_window_title() -> str:
-    active_window = gw.getActiveWindow()
-    if active_window:
-        # if "Google Chrome" in active_window.title:
-        #     return "Google Chrome"
-        if active_window.title == "LockingWindow" or active_window.title == "就像你看到的图像一样？选择以下选项":
-            return "锁屏"
-        if not active_window.title:
-            time.sleep(1)
-            active_window = gw.getActiveWindow()
-        return active_window.title
+def save_exe_icon(exe_path, exe_name: str):
+    large, small = win32gui.ExtractIconEx(exe_path, 0)
+    win32gui.DestroyIcon(small[0])
+    hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
+    hbmp = win32ui.CreateBitmap()
+    hbmp.CreateCompatibleBitmap(hdc, 32, 32)
+    hdc = hdc.CreateCompatibleDC()
+    hdc.SelectObject(hbmp)
+    hdc.DrawIcon((0, 0), large[0])
+    bmpinfo = hbmp.GetInfo()
+    bmpstr = hbmp.GetBitmapBits(True)
+    img = Image.frombuffer(
+        'RGBA',
+        (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
+        bmpstr, 'raw', 'BGRA', 0, 1)
+    buffered = BytesIO()  # 创建一个内存中的文件对象
+    img.save(buffered, format="PNG")  # 将图像保存到内存中的文件对象
+    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")  # 获取 Base64 编码的字符串
+    return img_str
+
+
+def get_active_window_title():
+    hwnd = win32gui.GetForegroundWindow()
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    exe_name = psutil.Process(pid).name()
+    exe_path = psutil.Process(pid).exe()
+    title = win32gui.GetWindowText(hwnd)
+    img_base64 = save_exe_icon(exe_path, exe_name)
+    # print(title, exe_name)
+    if not title:
+        return "桌面", exe_name, img_base64
     else:
-        return "桌面"
+        return title, exe_name, img_base64
 
 
 # 发送数据到Flask API
-def send_data_to_api(running_exe, report_time, retry_times=1):
+def send_data_to_api(running_exe, report_time, exe_name, img_base64, retry_times=1):
     url = args.url + "/set_info"
     headers = {
         'API-KEY': args.key
@@ -198,6 +220,8 @@ def send_data_to_api(running_exe, report_time, retry_times=1):
     payload = {
         'type': 'pc',
         'running_exe': running_exe,
+        'exe_name': exe_name,
+        'img_base64': f'data:image/png;base64,{img_base64}',
         'report_time': report_time
     }
     try:
@@ -287,23 +311,23 @@ def main():
     print("start...5")
     time.sleep(5)
     while True:
-        title = get_active_window_title()
+        title, exe_name, img_base64 = get_active_window_title()
         times = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        send_data_to_api(title, times)
+        send_data_to_api(title, times, exe_name, img_base64)
         time.sleep(int(args.cycle_time))
 
 
 if __name__ == "__main__":
-
+    # get_active_window_title()
     if args.command == 'run':
         logger.info("start".center(50, '-'))
         logger.info(f"环境变量 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
         logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, ' '))
         if args.test:
             time.sleep(1)
-            title_t = get_active_window_title()
+            title_t, exe_name_t, img_base64_t = get_active_window_title()
             time_t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            send_data_to_api(title_t, time_t)
+            send_data_to_api(title_t, time_t, exe_name_t, img_base64_t)
             exit(0)
         p = read_pid()
         if is_process_running(p):
