@@ -41,9 +41,9 @@ Set-Alias -Name reportw -Value get-reportw
 
 启用后右上角会有上传按钮,编辑确认好(当心url中的敏感信息,?参数默认全部去除)上传,在油猴中管理排除的网站
 
-### ~~安卓端~~
+### 安卓端
 
-使用MacroDroid,导入`自动汇报.macro`到软件,修改 动作>http请求>配置>查询参数中的key的值为your key
+使用MacroDroid,导入`自动汇报.macro`到软件,修改 动作>http请求>请求头参数中的API-KEY的值为your key
 
 ![438c5d8a5229d3c6ad0d05ead99f4d7c](https://github.com/user-attachments/assets/dff3c631-b64f-4a89-a613-d0661a21a29d)
 ![8717703a5811f528be6da5902cbc1569](https://github.com/user-attachments/assets/994ad739-3e39-4979-8134-25920f5d899c)
