@@ -1,54 +1,11 @@
-import json
 import os
 import re
-import toml
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from mcinfo import mcinfo, mclatency
+from config import SECRET_KEY
+from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data
 
 app = Flask(__name__)
-
-script_dir = os.path.dirname(os.path.abspath(__file__))
-data_file = os.path.join(script_dir, 'data.json')
-cfg_path = os.path.join(script_dir, "config.toml")
-if not os.path.exists(cfg_path):
-    raise FileNotFoundError("config.toml not found")
-cfg = toml.load(cfg_path)
-Data_limit_pc = cfg.get("Data_limit_pc", 6)
-Data_limit_browser = cfg.get("Data_limit_browser", 6)
-Data_limit_phone = cfg.get("Data_limit_phone", 6)
-SECRET_KEY = cfg.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY not found")
-
-
-def save_cfg():
-    with open(cfg_path, 'w') as f:
-        toml.dump({
-            "SECRET_KEY": SECRET_KEY,
-            "Data_limit_pc": Data_limit_pc,
-            "Data_limit_browser": Data_limit_browser,
-            "Data_limit_phone": Data_limit_phone,
-        }, f)
-
-
-def load_data():
-    if os.path.exists(data_file):
-        with open(data_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return {"pc": [], "browser": [], "phone": []}
-
-
-def save_data(d):
-    with open(data_file, 'w') as f:
-        json.dump(d, f, indent=4)
-
-
-data = load_data()
-
-
-def limit(d: list, dl: int):
-    if len(d) > dl:
-        del d[:-dl]
 
 
 def is_valid_address(address: str) -> bool:
@@ -94,20 +51,17 @@ def set_info():
         match info_type:
             case "pc":
                 running_exe = request.form.get("running_exe")
-                data["pc"].append({"running_exe": running_exe, "report_time": report_time})
-                limit(data["pc"], Data_limit_pc)
+                put_data("pc", {"running_exe": running_exe, "report_time": report_time})
             case "browser":
                 title = request.form.get("title")
                 url = request.form.get("url")
-                data["browser"].append({"title": title, "url": url, "report_time": report_time})
-                limit(data["browser"], Data_limit_browser)
+                put_data("browser", {"title": title, "url": url, "report_time": report_time})
             case "phone":
                 apps = request.json.get("app")
                 battery_level = request.json.get("battery_level")
                 wifi_ssid = request.json.get("wifi_ssid")
-                data["phone"].append({"app": apps, "battery_level": battery_level,
-                                      "wifi_ssid": wifi_ssid, "report_time": report_time})
-                limit(data["phone"], Data_limit_phone)
+                put_data("phone", {"app": apps, "battery_level": battery_level,
+                                   "wifi_ssid": wifi_ssid, "report_time": report_time})
             case _:
                 return jsonify({"error": f"unknown type {info_type}"}), 400
         return jsonify({"status": "ok"}), 200
@@ -118,10 +72,10 @@ def set_info():
 @app.route('/get_info', methods=['GET'])
 def get_info():
     t = request.args.get("type")
-    if t in ["pc", "browser", "phone"]:
-        return {t: data[t]}
+    if t in get_all_types():
+        return get_1type_data(t)
     else:
-        return data
+        return get_all_types_data()
 
 
 @app.route('/del_info', methods=['POST'])
@@ -131,15 +85,10 @@ def del_info():
         return jsonify({"error": "Invalid key"}), 403
     info_type = request.json.get('type')
     report_time = request.json.get('report_time')
-    if info_type in data:
-        initial_count = len(data[info_type])
-        removed_items = [item for item in data[info_type] if item['report_time'] == report_time]
-        data[info_type] = [item for item in data[info_type] if item['report_time'] != report_time]
-        removed_count = initial_count - len(data[info_type])
+    if info_type in get_all_types():
+        removed_count = del_data(info_type, report_time)
         if removed_count > 0:
-            save_data(data)
-            return jsonify(
-                {"message": f"Removed {removed_count} item(s) from {info_type}", "item": f"{removed_items}"}), 200
+            return jsonify({"message": f"Removed {removed_count} item(s) from {info_type}"}), 200
         else:
             return jsonify({"message": "No items found with the specified report_time"}), 404
     else:
@@ -157,51 +106,44 @@ def validate_limit(value, name):
 
 
 @app.route('/set_limit', methods=['POST'])
-def set_limit():
-    global Data_limit_pc, Data_limit_phone, Data_limit_browser
+def set_limit_api():
     key = request.headers.get('API-KEY')
     if key != SECRET_KEY:
         return jsonify({"message": "Invalid key"}), 403
-
     new_limits = request.get_json()
     if not new_limits:
         return jsonify({"message": "No data provided"}), 400
-
     errors = []
-    for device, value in new_limits.items():
-        if device in ['pc', 'browser', 'phone']:
-            error = validate_limit(value, device)
+    for t, value in new_limits.items():
+        if t in get_all_types():
+            error = validate_limit(value, t)
             if error:
                 errors.append(error)
             else:
-                globals()[f"Data_limit_{device}"] = int(value)
+                set_limit(t, int(value))
         else:
             errors.append("unknown type")
 
     if errors:
         return jsonify({"message": errors}), 400
-    save_cfg()
-    return jsonify({
-        'pc': Data_limit_pc,
-        'browser': Data_limit_browser,
-        'phone': Data_limit_phone
-    }), 200
+    return jsonify(get_limit()), 200
 
 
 @app.route('/get_limit', methods=['GET'])
-def get_limit():
-    return jsonify({
-        'pc': Data_limit_pc,
-        'browser': Data_limit_browser,
-        'phone': Data_limit_phone
-    }), 200
+def get_limit_api():
+    return jsonify(get_limit()), 200
 
 
-@app.teardown_request
-def teardown_request(response_or_error):
-    save_data(data)
-    save_cfg()
-    return response_or_error
+@app.route('/get_all_types', methods=['GET'])
+def get_all_types_api():
+    return jsonify(get_all_types()), 200
+
+
+# @app.teardown_request
+# def teardown_request(response_or_error):
+#     save_data(data)
+#     save_cfg()
+#     return response_or_error
 
 
 if __name__ == '__main__':

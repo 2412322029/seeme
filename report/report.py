@@ -18,11 +18,13 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 report_key = os.getenv('REPORT_KEY')
 report_url = os.getenv('REPORT_URL')
 
+
 def positive_int(value):
     ivalue = int(value)
     if ivalue <= 0:
         raise argparse.ArgumentTypeError(f"{value} is not a positive integer")
     return ivalue
+
 
 parser = argparse.ArgumentParser(description='''定时报告程序，可以从环境变量中获取 REPORT_KEY 和 REPORT_URL
 ''')
@@ -61,8 +63,6 @@ class LimitAction(argparse.Action):
             raise argparse.ArgumentError(self, "--type-number 后面参数必须成对出现(type and number)")
         for i in range(0, len(values), 2):
             limit_type = values[i]
-            if limit_type not in ['pc', 'browser', 'phone']:
-                raise argparse.ArgumentError(self, f"无效的限制类型: {limit_type}")
             try:
                 limit_number = int(values[i + 1])
                 if limit_number < 0 or limit_number > 100:
@@ -258,7 +258,6 @@ def del_info():
         if response.status_code == 200:
             res = response.json()
             print(f"{res['message']}")
-            pprint(f"{res['item']}")
         elif response.status_code == 404:
             logger.error(f"{response.text}")
         else:

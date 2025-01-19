@@ -1,0 +1,11 @@
+SECRET_KEY = "xx"
+
+[redis]
+host = "127.0.0.1"
+port = 6379
+db = 0
+
+[Data_limit_default]
+pc = 20
+browser = 20
+phone = 20
