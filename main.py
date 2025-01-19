@@ -89,8 +89,8 @@ def set_info():
         key = request.headers.get('API-KEY')
         if key != SECRET_KEY:
             return jsonify({"error": "Invalid key"}), 403
-        info_type = request.form.get('type')
-        report_time = request.form.get("report_time")
+        info_type = request.form.get('type') or request.json.get('type')
+        report_time = request.form.get("report_time") or request.json.get('report_time')
         match info_type:
             case "pc":
                 running_exe = request.form.get("running_exe")
@@ -102,14 +102,14 @@ def set_info():
                 data["browser"].append({"title": title, "url": url, "report_time": report_time})
                 limit(data["browser"], Data_limit_browser)
             case "phone":
-                apps = request.form.get("app")
-                battery_level = request.form.get("battery_level")
-                wifi_ssid = request.form.get("wifi_ssid")
+                apps = request.json.get("app")
+                battery_level = request.json.get("battery_level")
+                wifi_ssid = request.json.get("wifi_ssid")
                 data["phone"].append({"app": apps, "battery_level": battery_level,
                                       "wifi_ssid": wifi_ssid, "report_time": report_time})
                 limit(data["phone"], Data_limit_phone)
             case _:
-                return jsonify({"error": "unknown type"}), 400
+                return jsonify({"error": f"unknown type {info_type}"}), 400
         return jsonify({"status": "ok"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
