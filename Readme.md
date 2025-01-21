@@ -44,7 +44,9 @@ Set-Alias -Name reportw -Value get-reportw
 
 使用MacroDroid,导入`自动汇报.macro`到软件,修改 动作>http请求>请求头参数中的API-KEY的值为your key
 
+![847d32b207546aa4735abc341c75af2b](https://github.com/user-attachments/assets/6450d6ae-adb9-4aed-a59e-ba6c904190fc)
 ![438c5d8a5229d3c6ad0d05ead99f4d7c](https://github.com/user-attachments/assets/dff3c631-b64f-4a89-a613-d0661a21a29d)
-![8717703a5811f528be6da5902cbc1569](https://github.com/user-attachments/assets/994ad739-3e39-4979-8134-25920f5d899c)
+
+
 
 
