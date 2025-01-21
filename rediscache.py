@@ -3,7 +3,7 @@ from pprint import pprint
 
 import redis
 import json
-from config import data_file, cfg
+from config import cfg
 
 r = redis.StrictRedis(**cfg.get("redis"))
 
@@ -27,6 +27,14 @@ def put_data(t, dic):
     """
     r.hset(t, dic["report_time"], json.dumps(dic))
     limit_hashmap_size(t)
+
+
+def set_data(t, d):
+    r.set(t, d)
+
+
+def get_data(t):
+    return r.get(t)
 
 
 def limit_hashmap_size(t):
@@ -101,6 +109,7 @@ for t in get_all_types():
 
 
 def load_data():
+    data_file = "data.json"
     if os.path.exists(data_file):
         with open(data_file, 'r', encoding='utf-8') as f:
             data = json.load(f)

@@ -1,11 +1,15 @@
+import json
 import os
 import re
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from mcinfo import mcinfo, mclatency
 from config import SECRET_KEY
-from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data
+from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
+    set_data, get_data
 
 app = Flask(__name__)
+UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon")
+os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
 
 
 def is_valid_address(address: str) -> bool:
@@ -50,11 +54,11 @@ def set_info():
         report_time = request.form.get("report_time") or request.json.get('report_time')
         match info_type:
             case "pc":
-                running_exe = request.form.get("running_exe")
-                exe_name = request.form.get("exe_name")
-                img_base64 = request.form.get("img_base64")
-                put_data("pc", {"running_exe": running_exe, "exe_name": exe_name, "img_base64": img_base64,
-                                "report_time": report_time})
+                running_exe = request.json.get("running_exe")
+                exe_name = request.json.get("exe_name")
+                other = request.json.get("other")
+                set_data("activity_window", json.dumps(other))
+                put_data("pc", {"running_exe": running_exe, "exe_name": exe_name, "report_time": report_time})
             case "browser":
                 title = request.form.get("title")
                 url = request.form.get("url")
@@ -140,6 +144,44 @@ def get_limit_api():
 @app.route('/get_all_types', methods=['GET'])
 def get_all_types_api():
     return jsonify(get_all_types()), 200
+
+
+@app.route('/get_activity_window', methods=['GET'])
+def get_activity_window():
+    return jsonify(json.loads(get_data("activity_window").decode('utf-8'))), 200
+
+
+@app.route('/upload_exeIcon', methods=['POST'])
+def upload_exeIcon():
+    key = request.headers.get('API-KEY')
+    if key != SECRET_KEY:
+        return jsonify({"error": "Invalid key"}), 403
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({"error": "No selected files"}), 400
+    saved_files = []
+    for file in files:
+        if file.filename == '':
+            continue
+        if file and file.filename.lower().endswith('.png'):
+            filename = file.filename
+            file_path = os.path.join(UPLOAD_ICON_FOLDER, filename)
+            file.save(file_path)
+            saved_files.append(filename)
+        else:
+            return jsonify({"error": "Invalid file type only support .png"}), 400
+    return jsonify({"message": "File uploaded successfully", "filename": saved_files}), 200
+
+
+@app.route('/get_allIcon', methods=['GET'])
+def get_allIcon():
+    try:
+        all_entries = os.listdir(UPLOAD_ICON_FOLDER)
+        filenames = [entry.split(".png")[0] for entry in all_entries if
+                     os.path.isfile(os.path.join(UPLOAD_ICON_FOLDER, entry))]
+        return jsonify(filenames), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # @app.teardown_request
