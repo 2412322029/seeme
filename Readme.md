@@ -19,7 +19,7 @@ graph LR
 	L[python命令行工具<br> report.py<br> 配置环境变量<br>添加命令别名<br>编辑$PROFILE文件]
 	M[油猴脚本<br>自动汇报.js<br>  安装油猴扩展<br>配置API Key]
 	N[MacroDroid宏<br>自动汇报.macro<br> 导入MacroDroid脚本<br>配置API Key]
-	
+    L--> Y[集成了进程管理，日志查看，服务端数据管理]
     B-->|最近活动程序<br>程序标题<br>图标<br>更新时间 | L
     C-->|网站信息<br>网站标题<br>无参数URL<br>更新时间| M
     D -->|前台应用名称<br>WiFi信息<br>电池电量<br>更新时间 | N
@@ -45,7 +45,27 @@ redis相关配置为默认本机。Data_limit_default是默认限制条数，red
 使用python脚本
 report.py是一个报告命令行程序，定期向服务器发送当前正在玩儿什么，-h显示帮助
 如:`python(w) report.py run -u 服务器地址 -k 'your key'`
+```bash
+> report -h
+usage: report.py [-h] {status,log,kill,run,getlimit,getinfo,delinfo,setlimit} ...
 
+定时报告程序，可以从环境变量中获取 REPORT_KEY 和 REPORT_URL
+
+positional arguments:
+  {status,log,kill,run,getlimit,getinfo,delinfo,setlimit}
+                        可用的命令
+    status              查询进程状态
+    log                 查看最新日志
+    kill                杀死进程
+    run                 运行定时报告程序(使用pythonw可在后台运行)
+    getlimit            获取服务器限制值
+    getinfo             获取服务器数据
+    delinfo             删除服务器数据
+    setlimit            设置服务器数据最大个数
+
+options:
+  -h, --help            show this help message and exit
+```
 
 添加命令别名和使用环境变量更加方便powershell打开个人配置文件`notepad $PROFILE`添加以下内容
 ```powershell
