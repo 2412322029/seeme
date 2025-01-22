@@ -11,6 +11,6 @@ cfg = toml.load(cfg_path)
 SECRET_KEY = cfg.get("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY not found")
-if not cfg.get("redis"):
-    raise ValueError("redis config not found")
-# print(cfg)
+if not cfg.get("without_redis"):
+    if not cfg.get("redis"):
+        raise ValueError("redis config not found")

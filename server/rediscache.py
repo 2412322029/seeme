@@ -1,17 +1,29 @@
-import os
-from pprint import pprint
-
-import redis
+from mycache import MyCache
 import json
 from config import cfg
 
-r = redis.StrictRedis(**cfg.get("redis"))
+if cfg.get("without_redis"):
+    r = MyCache()
+    print("use mycache 不支持多线程!")
+else:
+    import redis
+    r = redis.StrictRedis(**cfg.get("redis"))
+    print("use redis")
 
 Data_limit_default = cfg.get("Data_limit_default")
 assert isinstance(Data_limit_default, dict), "Data_limit_default must be a dictionary"
 for k, v in Data_limit_default.items():
     if not r.hget("Data_limit", k):
         r.hset("Data_limit", k, v)
+
+
+def if_decode(s: any):
+    if isinstance(s, str):
+        return s
+    elif isinstance(s, bytes):
+        return s.decode("'utf-8")
+    else:
+        return s
 
 
 def get_all_types():
@@ -34,7 +46,11 @@ def set_data(t, d):
 
 
 def get_data(t):
-    return r.get(t)
+    res = r.get(t)
+    if res:
+        return if_decode(res)
+    else:
+        return "{}"
 
 
 def limit_hashmap_size(t):
@@ -46,7 +62,7 @@ def limit_hashmap_size(t):
     keys = r.hkeys(t)
     max_size = get_limit(t)
     if keys and len(keys) > max_size:
-        sorted_keys = sorted([kk.decode('utf-8') for kk in keys])
+        sorted_keys = sorted([if_decode(kk) for kk in keys])
         for key in sorted_keys[:-max_size]:
             # print(key)
             r.hdel(t, key)
@@ -63,7 +79,7 @@ def get_1type_data(t, i=None):
         return json.loads(r.hget(t, i) or '{}')
     else:
         items = r.hgetall(t)
-        items = {ik.decode('utf-8'): json.loads(iv.decode('utf-8')) for ik, iv in items.items()}
+        items = {if_decode(ik): json.loads(if_decode(iv)) for ik, iv in items.items()}
         sorted_items = sorted(items.items(), key=lambda x: x[0])
         sorted_values = [value for key, value in sorted_items]
         return {t: sorted_values}
@@ -101,30 +117,8 @@ def get_limit(t=None):
     if t:
         return int(r.hget("Data_limit", t))
     else:
-        return {ik.decode('utf-8'): int(iv.decode('utf-8')) for ik, iv in r.hgetall("Data_limit").items()}
+        return {if_decode(ik): int(if_decode(iv)) for ik, iv in r.hgetall("Data_limit").items()}
 
 
 for t in get_all_types():
     limit_hashmap_size(t)
-
-
-def load_data():
-    data_file = "data.json"
-    if os.path.exists(data_file):
-        with open(data_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            for dk, dv in data.items():
-                for i in dv:
-                    r.hset(dk, i["report_time"], json.dumps(i))
-    else:
-        raise FileNotFoundError(f"{data_file} not found")
-
-
-# def save_data(d):
-#     with open(data_file, 'w') as f:
-#         json.dump(d, f, indent=4)
-
-
-if __name__ == "__main__":
-    load_data()
-    # pprint(get_all_types_data())

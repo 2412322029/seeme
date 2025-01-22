@@ -3,5 +3,6 @@ __pycache__/
 report/log/
 /report/.pid
 data.json
-/templates/exe_icon/
+/server/templates/exe_icon/
+/server/cache.json
 /report/exe_icon/

@@ -19,13 +19,14 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError("Module Not Found. pip install pillow,psutil,pywin32")
 
-script_dir = os.path.dirname(os.path.abspath(__file__))  # 脚本文件路径
+script_dir = os.path.dirname(os.path.abspath(__file__))  # 脚本文件目录
 pause_file = os.path.join(script_dir, ".pause")  # 暂停flag文件路径
-icon_folder = os.path.join(script_dir, "exe_icon")  # exe icon 路径
+pid_file = os.path.join(script_dir, '.pid')  # 保存进程pid
+icon_dir = os.path.join(script_dir, "exe_icon")  # exe icon 路径
+os.makedirs(icon_dir, exist_ok=True)
 log_dir = os.path.join(script_dir, 'log')  # 日志目录
 os.makedirs(log_dir, exist_ok=True)  # 创建日志目录
 log_file = os.path.join(log_dir, 'report.log')  # 日志文件
-os.makedirs(icon_folder, exist_ok=True)
 report_key = os.getenv('REPORT_KEY')  # 尝试从环境变量中获取密钥和URL
 report_url = os.getenv('REPORT_URL')
 ServerIcon = []  # 服务器的icon列表
@@ -61,9 +62,8 @@ def is_process_running(pid):
 
 # 读取进程ID文件
 def read_pid():
-    pid_file_path = os.path.join(script_dir, '.pid')
     try:
-        with open(pid_file_path, 'r') as fi:
+        with open(pid_file, 'r') as fi:
             pid = int(fi.read())
         return pid
     except FileNotFoundError:
@@ -140,9 +140,9 @@ def kill_process():
 
 def get_allIcon():
     try:
-        all_entries = os.listdir(icon_folder)
+        all_entries = os.listdir(icon_dir)
         filenames = [entry.split(".png")[0] for entry in all_entries if
-                     os.path.isfile(os.path.join(icon_folder, entry))]
+                     os.path.isfile(os.path.join(icon_dir, entry))]
         return filenames
     except Exception as e:
         logger.error(f"{e}")
@@ -150,7 +150,7 @@ def get_allIcon():
 
 
 def save_exe_icon(exe_path, exe_name: str):
-    if os.path.exists(f"{icon_folder}/{exe_name}.png"):
+    if os.path.exists(f"{icon_dir}/{exe_name}.png"):
         return True
     try:
         large, _ = win32gui.ExtractIconEx(exe_path, 0)
@@ -170,7 +170,7 @@ def save_exe_icon(exe_path, exe_name: str):
             'RGBA',
             (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
             bmpstr, 'raw', 'BGRA', 0, 1)
-        img.save(f"{icon_folder}/{exe_name}.png", format="PNG")
+        img.save(f"{icon_dir}/{exe_name}.png", format="PNG")
         logger.info(f"{exe_name}.png save successfully!")
         return True
     except Exception as e:
@@ -178,6 +178,7 @@ def save_exe_icon(exe_path, exe_name: str):
         return False
 
 
+# TODO 对title进行正则过滤
 def get_active_window_title():
     hwnd = win32gui.GetForegroundWindow()
     _, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -310,7 +311,7 @@ def upload_icon(filenames: list[str]):
         logger.info(f"ServerIcon not have {filter_filenames} try upload ")
         for filename in filter_filenames:
             files_to_upload.append(
-                ("files", (filename, open(os.path.join(icon_folder, filename), "rb"), "application/octet-stream")))
+                ("files", (filename, open(os.path.join(icon_dir, filename), "rb"), "application/octet-stream")))
         response = requests.post(url, headers=headers, files=files_to_upload)
         if response.status_code == 200:
             ServerIcon.extend([f.split(".png")[0] for f in filter_filenames])  # 上传成功后更新服务器icon list
@@ -476,7 +477,7 @@ def main():
         check_process()
         exit(0)
     # 保存进程ID到文件
-    with open(os.path.join(script_dir, '.pid'), 'w') as f:
+    with open(pid_file, 'w') as f:
         f.write(str(os.getpid()))
     print("start...5")
     logger.info("start".center(50, '-'))
@@ -530,4 +531,5 @@ if __name__ == "__main__":
     elif args.command == 'delinfo':
         del_info()
     else:
-        print("这是一个命令行程序 add -h to help")
+        print("这是一个命令行程序，添加 -h 查看帮助。")
+        input("按Enter退出...")

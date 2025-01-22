@@ -148,7 +148,7 @@ def get_all_types_api():
 
 @app.route('/get_activity_window', methods=['GET'])
 def get_activity_window():
-    return jsonify(json.loads(get_data("activity_window").decode('utf-8'))), 200
+    return jsonify(json.loads(get_data("activity_window"))), 200
 
 
 @app.route('/upload_exeIcon', methods=['POST'])

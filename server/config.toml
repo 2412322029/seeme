@@ -1,5 +1,7 @@
 SECRET_KEY = "xx"
 
+without_redis = false
+
 [redis]
 host = "127.0.0.1"
 port = 6379

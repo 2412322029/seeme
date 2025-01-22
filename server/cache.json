@@ -1,0 +1,11 @@
+{
+    "Data_limit": {
+        "pc": 1,
+        "browser": 20,
+        "phone": 20
+    },
+    "activity_window": "{\"activity_window\": [{\"exe_name\": \"pycharm64.exe\", \"title\": \"wayd \\u2013 cache.json\"}, {\"exe_name\": \"chrome.exe\", \"title\": \"\\u4f60\\u5728\\u5e72\\u4ec0\\u4e48\\uff1f - Google Chrome\"}], \"report_time\": \"2025-01-22 11:18:41\"}",
+    "pc": {
+        "2025-01-22 11:18:41": "{\"running_exe\": \"wayd \\u2013 cache.json\", \"exe_name\": \"pycharm64.exe\", \"report_time\": \"2025-01-22 11:18:41\"}"
+    }
+}
