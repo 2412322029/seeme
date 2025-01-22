@@ -29,14 +29,23 @@ graph LR
     N -->|自动上传数据<br>自动触发<br>切换应用| F
 ```
 ## 服务端
-使用python flask服务器，mc查询使用mcstatus(安装flask,mcstatus)`pip insatll flask,mcstatus,redis`。
 
-部署到lniux使用uwsgi `pip insatll uwsgi` app.ini 有相关配置，支持多进程,使用`uwsgi --ini app.ini`启动。
-redis 保存数据，运行rediscache.py可从data.json 加载数据到redis，用于初始化数据，或迁移数据。
+```bash
+cd server
+pip install -r requirement.txt
+```
 
-在config.toml 填写SECRET_KEY = "your key" 记住这个key。
-redis相关配置为默认本机。Data_limit_default是默认限制条数，redis中没有相关信息时使用。
-记下服务端地址(ip/域名)。
+在config.toml 填写SECRET_KEY = "your key"。
+
+可选数据保存方式
+> (默认)redis 保存数据,支持多进程。
+
+> json 保存数据，多进程不安全，配置文件设置without_redis = true启用
+> 使用uwsgi时注意设置processes=1。
+>
+redis配置默认本机。Data_limit_default是默认限制条数只在初始化时使用。
+
+部署到Linux使用uwsgi `pip insatll uwsgi` app.ini 有相关配置，使用`uwsgi --ini app.ini`启动。
 
 ## 报告端
 报告端任选，有对应报告端就有对应数据显示(都在report文件夹中)
@@ -46,17 +55,19 @@ redis相关配置为默认本机。Data_limit_default是默认限制条数，red
 report.py是一个报告命令行程序，定期向服务器发送当前正在玩儿什么，-h显示帮助
 如:`python(w) report.py run -u 服务器地址 -k 'your key'`
 ```bash
-> report -h
-usage: report.py [-h] {status,log,kill,run,getlimit,getinfo,delinfo,setlimit} ...
+> report -h                                    
+usage: report.py [-h] {log,status,kill,pause,resume,run,getlimit,getinfo,delinfo,setlimit} ...
 
 定时报告程序，可以从环境变量中获取 REPORT_KEY 和 REPORT_URL
 
 positional arguments:
-  {status,log,kill,run,getlimit,getinfo,delinfo,setlimit}
+  {log,status,kill,pause,resume,run,getlimit,getinfo,delinfo,setlimit}
                         可用的命令
-    status              查询进程状态
     log                 查看最新日志
+    status              查询进程状态
     kill                杀死进程
+    pause               暂停进程
+    resume              恢复进程
     run                 运行定时报告程序(使用pythonw可在后台运行)
     getlimit            获取服务器限制值
     getinfo             获取服务器数据
