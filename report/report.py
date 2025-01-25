@@ -1,14 +1,15 @@
+import argparse
+import logging
 import os
 import re
-import time
 import signal
-import logging
-import requests
-import argparse
 import subprocess
-from pprint import pprint
+import time
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
+from pprint import pprint
+
+import requests
 
 try:
     from PIL import Image  # pip install pillow
@@ -54,6 +55,8 @@ logger = setup_logger(script_dir)
 # 检查进程是否存在
 def is_process_running(pid):
     try:
+        if pid is None:
+            return False
         process = psutil.Process(pid)
         return process.is_running()
     except psutil.NoSuchProcess:
