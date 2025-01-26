@@ -1,15 +1,15 @@
 import argparse
 import logging
 import os
-import re
 import signal
-import subprocess
 import time
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pprint import pprint
 
 import requests
+
+import Aut
 
 try:
     from PIL import Image  # pip install pillow
@@ -64,7 +64,7 @@ def is_process_running(pid):
 
 
 # 读取进程ID文件
-def read_pid():
+def read_pid(pid_file):
     try:
         with open(pid_file, 'r') as fi:
             pid = int(fi.read())
@@ -77,61 +77,49 @@ def read_pid():
         return None
 
 
-def check_process():
+def timeAgo(t: datetime):
+    current_time = datetime.now()
+    time_diff = current_time - t
+    days = time_diff.days
+    hours = time_diff.seconds // 3600
+    minutes = (time_diff.seconds % 3600) // 60
+    seconds = time_diff.seconds % 60
+    time_diff_str = ""
+    if days > 0:
+        time_diff_str += f"{days} days "
+    if hours > 0:
+        time_diff_str += f"{hours} hours "
+    if minutes > 0:
+        time_diff_str += f"{minutes} minutes "
+    if seconds > 0 or not time_diff_str:
+        time_diff_str += f"{seconds} seconds"
+    return f"{time_diff_str}"
+
+
+def check_process(pf, check_pause=True):
     try:
-        pid = read_pid()
-        print(f"进程ID: {pid}")
+        pid = read_pid(pf)
+        print(f"pid(file)  :{pid}")
         if is_process_running(pid):
-            print(f"进程正在运行")
-            cmdline_result = subprocess.run(
-                ['wmic', 'process', 'where', f'ProcessId={pid}', 'get', 'CommandLine', '/value'],
-                capture_output=True, text=True, check=True
-            )
-            cmdline = cmdline_result.stdout.strip().split('=')[1] if '=' in cmdline_result.stdout else 'N/A'
-            memusage_result = subprocess.run(
-                ['wmic', 'process', 'where', f'ProcessId={pid}', 'get', 'WorkingSetSize', '/value'],
-                capture_output=True, text=True, check=True
-            )
-            memusage = int(memusage_result.stdout.strip().split('=')[1]) if '=' in memusage_result.stdout else 0
-            memusage_mb = memusage // 1024 ** 2
-            print(f"工作集内存使用: {memusage_mb} MB")
-            print(f"命令行参数: {cmdline}")
-            if os.path.exists(pause_file):
-                pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}).*Process paused\.$"
-                match = re.match(pattern, logcat(1)[0])
-                if match:
-                    log_time_str = match.group(1)
-                    log_time = datetime.strptime(log_time_str, "%Y-%m-%d %H:%M:%S,%f")
-                    current_time = datetime.now()
-                    time_diff = current_time - log_time
-                    days = time_diff.days
-                    hours = time_diff.seconds // 3600
-                    minutes = (time_diff.seconds % 3600) // 60
-                    seconds = time_diff.seconds % 60
-                    time_diff_str = ""
-                    if days > 0:
-                        time_diff_str += f"{days}天"
-                    if hours > 0:
-                        time_diff_str += f"{hours}小时"
-                    if minutes > 0:
-                        time_diff_str += f"{minutes}分钟"
-                    if seconds > 0 or not time_diff_str:
-                        time_diff_str += f"{seconds}秒"
-                    print(f"日志显示 {time_diff_str.strip()}前被暂停↑")
-                else:
-                    print("进程暂停中！")
-                    print("日志行格式不正确，或不以 'Process paused.' 结尾。查看最新一条日志↑")
-
+            print(f"status     : \033[92m{psutil.Process(pid).status()}\033[0m")
+            print(f"memory     : {psutil.Process(pid).memory_info().rss // 1024 ** 2} MB")
+            print(f"cmdline    : {" ".join(psutil.Process(pid).cmdline())}")
+            t = datetime.fromtimestamp(psutil.Process(pid).create_time())
+            print(f"create time: {t.strftime('%Y-%m-%d %H:%M:%S')}  (\033[92m{timeAgo(t)}\033[0m ago)")
+            if os.path.exists(pause_file) and check_pause:
+                getctime_str = datetime.fromtimestamp(os.path.getctime(pause_file))
+                # print(f"{pause_file} Create At {getctime_str}")
+                print(f"The process was paused at {getctime_str} (\033[91m{timeAgo(getctime_str).strip()}\033[0m ago!)")
         else:
-            print("进程已停止.")
-    except (FileNotFoundError, ValueError):
-        print("没有找到进程ID文件或进程不存在.")
+            print(f"status     : \033[91mstop\033[0m")
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(f"没有找到进程ID文件或进程不存在. {e}")
 
 
-def kill_process():
+def kill_process(pf):
     # 杀死进程
     try:
-        pid = read_pid()
+        pid = read_pid(pf)
         if is_process_running(pid):
             os.kill(pid, signal.SIGTERM)
             print(f"进程 pid={pid} 已被杀死.")
@@ -144,7 +132,7 @@ def kill_process():
 def get_allIcon():
     try:
         all_entries = os.listdir(icon_dir)
-        filenames = [entry.split(".png")[0] for entry in all_entries if
+        filenames = [entry for entry in all_entries if
                      os.path.isfile(os.path.join(icon_dir, entry))]
         return filenames
     except Exception as e:
@@ -357,7 +345,7 @@ def del_info():
 
 def pause_process():
     """暂停进程"""
-    if not is_process_running(read_pid()):
+    if not is_process_running(read_pid(pid_file)):
         print("process is not running.")
         return
     if not os.path.exists(pause_file):
@@ -369,7 +357,7 @@ def pause_process():
 
 def resume_process():
     """恢复进程"""
-    if not is_process_running(read_pid()):
+    if not is_process_running(read_pid(pid_file)):
         print("process is not running.")
         return
     if os.path.exists(pause_file):
@@ -458,6 +446,11 @@ def args_parser():
                                        parents=[parent_key_parser, parent_url_parser])
     parser_set.add_argument('-tn', '--type-number', nargs='+', action=LimitAction, required=True,
                             dest='limits', help="限制类型 'pc', 'browser', 'phone' 和对应的限制行数")
+    parser_aut = subparsers.add_parser('aut', help='运行应用使用时间统计, 定时上传app_usage.db到服务器',
+                                       parents=[parent_key_parser, parent_url_parser])
+    parser_aut.add_argument('--status', action='store_true', help='查询 "应用使用时间统计" 的进程状态 and exit')
+    parser_aut.add_argument('--kill', action='store_true', help='杀死 "应用使用时间统计" 进程 and exit')
+    parser_aut.add_argument('--analysis', action='store_true', help='显示应用使用时间统计')
 
     args = parser.parse_args()
     # 确保 args.key 和 args.url 存在
@@ -473,11 +466,30 @@ def args_parser():
     return args
 
 
-def main():
-    p = read_pid()
+def upload_db(sql_path: str):
+    try:
+        # TODO upload_db
+        for o in Aut.get_all_names():
+            save_exe_icon(o, o.split('\\')[-1])
+        upload_icon(get_allIcon())
+    except Exception as e:
+        logger.error(f"{e}")
+
+
+def run_aut():
+    p = read_pid(Aut.aut_pid_file)
     if is_process_running(p):
-        print(f"进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
-        check_process()
+        print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
+        check_process(Aut.aut_pid_file, check_pause=False)
+        exit(0)
+    Aut.run(upload_db)
+
+
+def main():
+    p = read_pid(pid_file)
+    if is_process_running(p):
+        print(f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
+        check_process(pid_file)
         exit(0)
     # 保存进程ID到文件
     with open(pid_file, 'w') as f:
@@ -506,7 +518,6 @@ def test_main():
     send_data_to_api(running_exe=title_t, report_time=time_t, exe_name=exe_name_t, other=get_all_window_info())
     if hicon_t:
         upload_icon([exe_name_t + ".png"])
-    exit(0)
 
 
 if __name__ == "__main__":
@@ -514,11 +525,26 @@ if __name__ == "__main__":
     if args.command == 'run':
         if args.test:
             test_main()
+            exit(0)
         main()
+    if args.command == 'aut':
+        if args.status:
+            check_process(Aut.aut_pid_file, check_pause=False)
+            exit(0)
+        if args.kill:
+            kill_process(Aut.aut_pid_file)
+            exit(0)
+        if args.analysis:
+            Aut.print_analysis()
+            exit(0)
+        run_aut()
     elif args.command == 'status':
-        check_process()
+        print("自动汇报".center(50, "-"))
+        check_process(pid_file)
+        print("应用使用时间统计".center(50, "-"))
+        check_process(Aut.aut_pid_file, check_pause=False)
     elif args.command == 'kill':
-        kill_process()
+        kill_process(pid_file)
     elif args.command == 'pause':
         pause_process()
     elif args.command == 'resume':

@@ -2,8 +2,9 @@
 __pycache__/
 report/log/
 /report/.pid
+/report/.pause
 data.json
 /server/templates/exe_icon/
 /server/cache.json
 /report/exe_icon/
-/dist/
+dist/
