@@ -1,5 +1,5 @@
-SECRET_KEY = "xx"
-
+SECRET_KEY = "seeme"
+#
 without_redis = false
 
 [redis]
@@ -11,3 +11,8 @@ db = 0
 pc = 20
 browser = 20
 phone = 20
+
+[steam]
+enable = false
+steam_id = 76561199077836301
+steam_key = ""

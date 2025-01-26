@@ -1,11 +1,14 @@
 import json
 import os
 import re
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from mcinfo import mcinfo, mclatency
+
 from config import SECRET_KEY
+from mcinfo import mcinfo, mclatency
 from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
     set_data, get_data
+from steamapi import steam_info
 
 app = Flask(__name__)
 UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon")
@@ -180,6 +183,14 @@ def get_allIcon():
         filenames = [entry.split(".png")[0] for entry in all_entries if
                      os.path.isfile(os.path.join(UPLOAD_ICON_FOLDER, entry))]
         return jsonify(filenames), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/get_steam_info', methods=['GET'])
+def get_steam_info():
+    try:
+        return jsonify(steam_info()), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
