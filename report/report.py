@@ -1,33 +1,28 @@
 import argparse
-import logging
 import os
 import signal
 import time
 from datetime import datetime
-from logging.handlers import TimedRotatingFileHandler
 from pprint import pprint
 
-import requests
-
 import Aut
+from Aut.logger import logger, log_file
 
 try:
+    import requests  # pip install requests
     from PIL import Image  # pip install pillow
     import psutil  # pip install psutil
     import win32process  # pip install pywin32
     import win32gui
     import win32ui
 except ModuleNotFoundError:
-    raise ModuleNotFoundError("Module Not Found. pip install pillow,psutil,pywin32")
+    raise ModuleNotFoundError("Module Not Found. pip install pillow,psutil,pywin32,requests")
 
 script_dir = os.path.dirname(os.path.abspath(__file__))  # 脚本文件目录
 pause_file = os.path.join(script_dir, ".pause")  # 暂停flag文件路径
 pid_file = os.path.join(script_dir, '.pid')  # 保存进程pid
 icon_dir = os.path.join(script_dir, "exe_icon")  # exe icon 路径
 os.makedirs(icon_dir, exist_ok=True)
-log_dir = os.path.join(script_dir, 'log')  # 日志目录
-os.makedirs(log_dir, exist_ok=True)  # 创建日志目录
-log_file = os.path.join(log_dir, 'report.log')  # 日志文件
 report_key = os.getenv('REPORT_KEY')  # 尝试从环境变量中获取密钥和URL
 report_url = os.getenv('REPORT_URL')
 ServerIcon = []  # 服务器的icon列表
@@ -35,21 +30,6 @@ retry_times = 1  # 失败重试次数
 # 排除的活动进程
 Exclude_Process = ["TextInputHost.exe", "SystemSettings.exe", "NVIDIA Overlay.exe", "svchost.exe",
                    "ApplicationFrameHost.exe"]
-
-
-def setup_logger(logger_name="main", log_level=logging.INFO):
-    fm = "%(asctime)-15s [%(levelname)s] [%(funcName)s:%(lineno)d] %(message)s"
-    logging.basicConfig(format=fm, level=log_level)
-    logger = logging.getLogger(logger_name)
-    file_handler = TimedRotatingFileHandler(
-        log_file, when="midnight", interval=1, backupCount=10, encoding="utf-8"
-    )  # 创建文件日志处理程序
-    file_handler.setFormatter(logging.Formatter(fm))
-    logger.addHandler(file_handler)
-    return logger
-
-
-logger = setup_logger(script_dir)
 
 
 # 检查进程是否存在
@@ -64,9 +44,9 @@ def is_process_running(pid):
 
 
 # 读取进程ID文件
-def read_pid(pid_file):
+def read_pid(pf):
     try:
-        with open(pid_file, 'r') as fi:
+        with open(pf, 'r') as fi:
             pid = int(fi.read())
         return pid
     except FileNotFoundError:
@@ -188,7 +168,7 @@ def get_all_window_info():
     call_results = set()
     result = list()
 
-    def enum_windows_callback(hwnd, call_results):
+    def enum_windows_callback(hwnd, mycall_results):
         try:
             if not win32gui.IsWindowVisible(hwnd):
                 return
@@ -205,7 +185,7 @@ def get_all_window_info():
             hicon = save_exe_icon(exe_path, exe_name)
             process_info = {"exe_name": exe_name, "title": title}
             result.append(process_info)
-            call_results.add((exe_name, title, hicon))
+            mycall_results.add((exe_name, title, hicon))
         except Exception as e:
             logger.error(f"Error in enum_windows_callback: {e}")
 
@@ -452,18 +432,18 @@ def args_parser():
     parser_aut.add_argument('--kill', action='store_true', help='杀死 "应用使用时间统计" 进程 and exit')
     parser_aut.add_argument('--analysis', action='store_true', help='显示应用使用时间统计')
 
-    args = parser.parse_args()
+    parser_args = parser.parse_args()
     # 确保 args.key 和 args.url 存在
-    if not hasattr(args, 'key'):
-        args.key = None
-    if not hasattr(args, 'url'):
-        args.url = None
-    if report_key and not args.key:
-        args.key = report_key
-    if report_url and not args.url:
-        args.url = report_url
+    if not hasattr(parser_args, 'key'):
+        parser_args.key = None
+    if not hasattr(parser_args, 'url'):
+        parser_args.url = None
+    if report_key and not parser_args.key:
+        parser_args.key = report_key
+    if report_url and not parser_args.url:
+        parser_args.url = report_url
 
-    return args
+    return parser_args
 
 
 def upload_db(sql_path: str):
@@ -477,35 +457,47 @@ def upload_db(sql_path: str):
 
 
 def run_aut():
-    p = read_pid(Aut.aut_pid_file)
-    if is_process_running(p):
-        print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
-        check_process(Aut.aut_pid_file, check_pause=False)
-        exit(0)
-    Aut.run(upload_db)
+    try:
+        p = read_pid(Aut.aut_pid_file)
+        if is_process_running(p):
+            print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
+            check_process(Aut.aut_pid_file, check_pause=False)
+            exit(0)
+        Aut.run(upload_db)
+    except Exception as e:
+        logger.fatal(f"{e}")
+        exit(-1)
 
 
 def main():
-    p = read_pid(pid_file)
-    if is_process_running(p):
-        print(f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
-        check_process(pid_file)
-        exit(0)
-    # 保存进程ID到文件
-    with open(pid_file, 'w') as f:
-        f.write(str(os.getpid()))
-    print("start...5")
-    logger.info("start".center(50, '-'))
-    get_allServerIcon()
-    time.sleep(5)
-    while True:
-        if not os.path.exists(pause_file):
-            title, exe_name, hicon = get_active_window_title()
-            times = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            send_data_to_api(running_exe=title, report_time=times, exe_name=exe_name, other=get_all_window_info())
-            if hicon:
-                upload_icon([exe_name + ".png"])
-        time.sleep(int(args.cycle_time))
+    try:
+        p = read_pid(pid_file)
+        if is_process_running(p):
+            print(
+                f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
+            check_process(pid_file)
+            exit(0)
+        # 保存进程ID到文件
+        with open(pid_file, 'w') as f:
+            f.write(str(os.getpid()))
+        print("start...5")
+        logger.info("start".center(50, '-'))
+        get_allServerIcon()
+        time.sleep(5)
+        while True:
+            if not os.path.exists(pause_file):
+                result = get_active_window_title()
+                if result is None:
+                    continue  # 如果 result 为 None，则跳过本次循环
+                title, exe_name, hicon = result
+                times = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                send_data_to_api(running_exe=title, report_time=times, exe_name=exe_name, other=get_all_window_info())
+                if hicon:
+                    upload_icon([exe_name + ".png"])
+            time.sleep(int(args.cycle_time))
+    except Exception as e:
+        logger.fatal(f"{e}")
+        exit(-1)
 
 
 def test_main():

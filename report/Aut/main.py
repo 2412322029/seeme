@@ -8,6 +8,8 @@ import psutil
 import win32gui
 import win32process
 
+from .logger import logger
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sqlite_file = os.path.join(script_dir, "app_usage.db")
 aut_pid_file = os.path.join(script_dir, 'aut.pid')  # 保存进程pid
@@ -44,7 +46,9 @@ def get_active_window_process_path():
         # print(title)
         try:
             process = psutil.Process(pid)
-            return process.exe()  # 获取进程的可执行文件路径
+            exe_path = process.exe()  # 获取进程的可执行文件路径
+            if not exe_path.endswith("explorer.exe"):
+                return exe_path
         except psutil.NoSuchProcess:
             return None
     return None
@@ -153,10 +157,6 @@ def run(upload_callback=None):
             if upload_callback and (current_time - last_upload_time) >= 3600:  # 一小时上传一次
                 upload_callback(sqlite_file)
                 last_upload_time = current_time  # 更新上次上传时间
-    except KeyboardInterrupt as e:
-        print(f"发生异常: {e}")
+    except Exception as e:
+        logger.fatal(f"发生异常: {e}")
         on_exit(None, None)
-
-
-if __name__ == "__main__":
-    run()
