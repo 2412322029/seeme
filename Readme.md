@@ -106,8 +106,23 @@ Set-Alias -Name reportw -Value get-reportw
 使用MacroDroid,导入`自动汇报.macro`到软件,修改 动作>http请求>请求头参数中的API-KEY的值为your key
 
 ![847d32b207546aa4735abc341c75af2b](https://github.com/user-attachments/assets/6450d6ae-adb9-4aed-a59e-ba6c904190fc)
+
 ![438c5d8a5229d3c6ad0d05ead99f4d7c](https://github.com/user-attachments/assets/dff3c631-b64f-4a89-a613-d0661a21a29d)
 
+### TODO
+- 显示steam在线情况（完成）
+- report命令行->gui（已完成部分功能,打包后、后台report部分运行占用内存变大）
+- 应用时间统计（已完成基本功能）
+- 定时上传统计数据库（未完成）
+- 服务端应用时间统计接口（未完成）
+- 前端表格统计（未完成）
+  
+### 打包指南
+pip install pyinstaller
+进入report目录，运行pyinstaller report.spec
+
+打包保留命令行功能（优点：无需python环境和三方库；缺点：占用内存变大10MB->100MB;）
+![image](https://github.com/user-attachments/assets/1584f498-a4a1-46e0-9267-787a626f3579)
 
 
 
