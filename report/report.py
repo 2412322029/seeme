@@ -1,6 +1,7 @@
 import argparse
 import os
 import signal
+import sys
 import time
 from datetime import datetime
 from pprint import pprint
@@ -18,7 +19,8 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError("Module Not Found. pip install pillow,psutil,pywin32,requests")
 
-script_dir = os.path.dirname(os.path.abspath(__file__))  # 脚本文件目录
+main_file = os.path.abspath(__file__)
+script_dir = os.path.dirname(main_file)  # 脚本文件目录
 pause_file = os.path.join(script_dir, ".pause")  # 暂停flag文件路径
 pid_file = os.path.join(script_dir, '.pid')  # 保存进程pid
 icon_dir = os.path.join(script_dir, "exe_icon")  # exe icon 路径
@@ -76,37 +78,65 @@ def timeAgo(t: datetime):
     return f"{time_diff_str}"
 
 
-def check_process(pf, check_pause=True):
+def ifPrint(*values: object, IF: bool) -> None:
+    if IF:
+        print(*values)
+
+
+def check_process(pf, check_pause=True, pt=True):
+    err = None
+    info = {}
     try:
         pid = read_pid(pf)
-        print(f"pid(file)  :{pid}")
+        info["pid"] = pid
+        ifPrint(f"pid(file)  :{pid}", IF=pt)
         if is_process_running(pid):
-            print(f"status     : \033[92m{psutil.Process(pid).status()}\033[0m")
-            print(f"memory     : {psutil.Process(pid).memory_info().rss // 1024 ** 2} MB")
-            print(f"cmdline    : {" ".join(psutil.Process(pid).cmdline())}")
-            t = datetime.fromtimestamp(psutil.Process(pid).create_time())
-            print(f"create time: {t.strftime('%Y-%m-%d %H:%M:%S')}  (\033[92m{timeAgo(t)}\033[0m ago)")
+            process = psutil.Process(pid)
+            info["status"] = process.status()
+            info["memory"] = process.memory_info().rss // (1024 ** 2)
+            info["cmdline"] = " ".join(process.cmdline())
+            create_time = datetime.fromtimestamp(process.create_time())
+            info["create_time"] = (f"{create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
+                                   f"({timeAgo(create_time)} ago)")
+            ifPrint(f"status     : \033[92m{info['status']}\033[0m", IF=pt)
+            ifPrint(f"memory     : {info['memory']} MB", IF=pt)
+            ifPrint(f"cmdline    : {info['cmdline']}", IF=pt)
+            ifPrint(f"create time: {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
+                    f"(\033[92m{timeAgo(create_time)}\033[0m ago)", IF=pt)
             if os.path.exists(pause_file) and check_pause:
-                getctime_str = datetime.fromtimestamp(os.path.getctime(pause_file))
-                # print(f"{pause_file} Create At {getctime_str}")
-                print(f"The process was paused at {getctime_str} (\033[91m{timeAgo(getctime_str).strip()}\033[0m ago!)")
+                getctime = datetime.fromtimestamp(os.path.getctime(pause_file))
+                info["paused"] = getctime
+                ifPrint(f"The process was paused at  {getctime} (\033[91m{timeAgo(getctime).strip()}\033[0m ago!)",
+                        IF=pt)
         else:
-            print(f"status     : \033[91mstop\033[0m")
+            info["status"] = "stop"
+            ifPrint(f"status     : \033[91mstop\033[0m", IF=pt)
     except (FileNotFoundError, ValueError) as e:
+        err = str(e)
         logger.error(f"没有找到进程ID文件或进程不存在. {e}")
+    except Exception as e:
+        err = str(e)
+        logger.error(f"发生未知错误: {e}")
+    return err, info
 
 
 def kill_process(pf):
     # 杀死进程
+    msg = ""
     try:
         pid = read_pid(pf)
         if is_process_running(pid):
             os.kill(pid, signal.SIGTERM)
-            print(f"进程 pid={pid} 已被杀死.")
+            msg = f"进程 pid={pid} 已被杀死."
+            return msg
         else:
-            print(f"进程 {pid} 不存在.")
+            msg = f"进程 {pid} 不存在."
+            return msg
     except Exception as e:
-        print(f"杀死进程时出错: {e}")
+        msg = f"杀死进程时出错: {e}"
+        return msg
+    finally:
+        print(msg)
 
 
 def get_allIcon():
@@ -347,24 +377,24 @@ def resume_process():
         print("Process is already running.")
 
 
-def logcat(tail=10):
+def logcat(tail=10, pt=True, lf=log_file):
     red = '\033[91m'
     end = '\033[0m'
     try:
-        with open(log_file, 'r', encoding='utf-8') as file:
+        with open(lf, 'r', encoding='utf-8') as file:
             lines = file.readlines()
     except Exception as e:
-        print(f"读取文件时出错: {e}")
-        return []
+        ifPrint(f"读取文件时出错: {e}", IF=pt)
+        return [f"读取文件时出错: {e}"]
     # 只显示最后几行
     lines = lines[-tail:]
 
     for line in lines:
         line = line.strip()
         if "[INFO]" not in line:
-            print(f"{red}{line}{end}")
+            ifPrint(f"{red}{line}{end}", IF=pt)
         else:
-            print(line)
+            ifPrint(line, IF=pt)
     return lines
 
 
@@ -462,11 +492,11 @@ def run_aut():
         if is_process_running(p):
             print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
             check_process(Aut.aut_pid_file, check_pause=False)
-            exit(0)
+            sys.exit(0)
         Aut.run(upload_db)
     except Exception as e:
         logger.fatal(f"{e}")
-        exit(-1)
+        sys.exit(-1)
 
 
 def main():
@@ -476,7 +506,7 @@ def main():
             print(
                 f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
             check_process(pid_file)
-            exit(0)
+            sys.exit(0)
         # 保存进程ID到文件
         with open(pid_file, 'w') as f:
             f.write(str(os.getpid()))
@@ -497,7 +527,7 @@ def main():
             time.sleep(int(args.cycle_time))
     except Exception as e:
         logger.fatal(f"{e}")
-        exit(-1)
+        sys.exit(-1)
 
 
 def test_main():
@@ -517,18 +547,18 @@ if __name__ == "__main__":
     if args.command == 'run':
         if args.test:
             test_main()
-            exit(0)
+            sys.exit(0)
         main()
     if args.command == 'aut':
         if args.status:
             check_process(Aut.aut_pid_file, check_pause=False)
-            exit(0)
+            sys.exit(0)
         if args.kill:
             kill_process(Aut.aut_pid_file)
-            exit(0)
+            sys.exit(0)
         if args.analysis:
             Aut.print_analysis()
-            exit(0)
+            sys.exit(0)
         run_aut()
     elif args.command == 'status':
         print("自动汇报".center(50, "-"))
