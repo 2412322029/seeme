@@ -116,7 +116,8 @@ Set-Alias -Name reportw -Value get-reportw
 - 定时上传统计数据库（未完成）
 - 服务端应用时间统计接口（未完成）
 - 前端表格统计（未完成）
-  
+
+前端源码https://github.com/2412322029/seeme-frontend
 ### 打包指南
 pip install pyinstaller
 进入report目录，运行pyinstaller report.spec
