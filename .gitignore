@@ -8,3 +8,5 @@ data.json
 /server/cache.json
 /report/exe_icon/
 dist/
+/report/build/
+/report/settings.txt

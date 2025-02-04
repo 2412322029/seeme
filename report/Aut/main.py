@@ -1,6 +1,7 @@
 import os
 import signal
 import sqlite3
+import sys
 import time
 from datetime import datetime
 
@@ -8,11 +9,10 @@ import psutil
 import win32gui
 import win32process
 
-from .logger import logger
+from .logger import logger, APPDATA
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sqlite_file = os.path.join(script_dir, "app_usage.db")
-aut_pid_file = os.path.join(script_dir, 'aut.pid')  # 保存进程pid
+sqlite_file = os.path.join(APPDATA, "app_usage.db")
+aut_pid_file = os.path.join(APPDATA, 'aut.pid')  # 保存进程pid
 conn = sqlite3.connect(sqlite_file)
 cursor = conn.cursor()
 
@@ -136,7 +136,7 @@ def on_exit(signum, frame):
     cursor.close()
     conn.close()
     print("数据已保存，程序退出。")
-    exit(0)
+    sys.exit(0)
 
 
 def run(upload_callback=None):

@@ -119,11 +119,11 @@ Set-Alias -Name reportw -Value get-reportw
 
 前端源码https://github.com/2412322029/seeme-frontend
 ### 打包指南
-pip install pyinstaller
-进入report目录，运行pyinstaller report.spec
 
-打包保留命令行功能（优点：无需python环境和三方库；缺点：占用内存变大10MB->100MB;）
-![image](https://github.com/user-attachments/assets/1584f498-a4a1-46e0-9267-787a626f3579)
+pip install nuitka
+进入report目录，使用powershell运行build.ps1
+
+
 
 
 

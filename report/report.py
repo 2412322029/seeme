@@ -7,7 +7,8 @@ from datetime import datetime
 from pprint import pprint
 
 import Aut
-from Aut.logger import logger, log_file
+from Aut.config import cfg
+from Aut.logger import logger, log_file, APPDATA
 
 try:
     import requests  # pip install requests
@@ -19,19 +20,19 @@ try:
 except ModuleNotFoundError:
     raise ModuleNotFoundError("Module Not Found. pip install pillow,psutil,pywin32,requests")
 
-main_file = os.path.abspath(__file__)
-script_dir = os.path.dirname(main_file)  # 脚本文件目录
-pause_file = os.path.join(script_dir, ".pause")  # 暂停flag文件路径
-pid_file = os.path.join(script_dir, '.pid')  # 保存进程pid
-icon_dir = os.path.join(script_dir, "exe_icon")  # exe icon 路径
+pause_file = os.path.join(APPDATA, "report.pause")  # 暂停flag文件路径
+pid_file = os.path.join(APPDATA, 'report.pid')  # 保存进程pid
+icon_dir = os.path.join(APPDATA, "exe_icon")  # exe icon 路径
 os.makedirs(icon_dir, exist_ok=True)
-report_key = os.getenv('REPORT_KEY')  # 尝试从环境变量中获取密钥和URL
-report_url = os.getenv('REPORT_URL')
+report_key = cfg.get("DEFAULT", "key", fallback="")
+report_url = cfg.get("DEFAULT", "url", fallback="")
 ServerIcon = []  # 服务器的icon列表
 retry_times = 1  # 失败重试次数
 # 排除的活动进程
-Exclude_Process = ["TextInputHost.exe", "SystemSettings.exe", "NVIDIA Overlay.exe", "svchost.exe",
-                   "ApplicationFrameHost.exe"]
+Exclude_Process = cfg.get("DEFAULT", "exclude_process", fallback="").split(",")
+
+
+# logger.info(f"{Exclude_Process=}")
 
 
 # 检查进程是否存在
@@ -52,7 +53,7 @@ def read_pid(pf):
             pid = int(fi.read())
         return pid
     except FileNotFoundError:
-        print("没有找到进程ID文件.")
+        # print("没有找到进程ID文件.")
         return None
     except ValueError:
         print("进程ID文件内容无效.")
@@ -104,8 +105,9 @@ def check_process(pf, check_pause=True, pt=True):
             ifPrint(f"create time: {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
                     f"(\033[92m{timeAgo(create_time)}\033[0m ago)", IF=pt)
             if os.path.exists(pause_file) and check_pause:
+                info["status"] = "paused"
                 getctime = datetime.fromtimestamp(os.path.getctime(pause_file))
-                info["paused"] = getctime
+                info["paused"] = f"{getctime} ({timeAgo(getctime).strip()} ago!)"
                 ifPrint(f"The process was paused at  {getctime} (\033[91m{timeAgo(getctime).strip()}\033[0m ago!)",
                         IF=pt)
         else:
@@ -194,7 +196,7 @@ def get_active_window_title():
         return title, exe_name, hicon
 
 
-def get_all_window_info():
+def get_all_window_info(args):
     call_results = set()
     result = list()
 
@@ -225,12 +227,12 @@ def get_all_window_info():
         if r[2]:
             upload_files.append(r[0] + ".png")
     if upload_files:
-        upload_icon(upload_files)
+        upload_icon(args, upload_files)
     return {"activity_window": result, "report_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
 
 # 发送数据到Flask API
-def send_data_to_api(running_exe, report_time, exe_name, other: dict):
+def send_data_to_api(args, running_exe, report_time, exe_name, other: dict):
     url = args.url + "/set_info"
     headers = {
         'API-KEY': args.key
@@ -255,15 +257,15 @@ def send_data_to_api(running_exe, report_time, exe_name, other: dict):
         if retry_times > 0:
             retry_times -= 1
             logger.info(f"Retrying... {retry_times=}")
-            send_data_to_api(running_exe, report_time, exe_name, other)
+            send_data_to_api(args, running_exe, report_time, exe_name, other)
 
 
-def get_limit():
+def get_limit(args):
     response = requests.get(args.url + "/get_limit").text
     print(response)
 
 
-def set_limit():
+def set_limit(args):
     url = args.url + "/set_limit"
     headers = {
         'API-KEY': args.key
@@ -283,7 +285,7 @@ def set_limit():
         logger.error(f"Unexpected error: {str(e)}")
 
 
-def get_allServerIcon():
+def get_allServerIcon(args):
     url = args.url + "/get_allIcon"
     try:
         response = requests.get(url)
@@ -297,7 +299,7 @@ def get_allServerIcon():
         logger.error(f"Unexpected error: {str(e)}")
 
 
-def upload_icon(filenames: list[str]):
+def upload_icon(args, filenames: list[str]):
     filter_filenames = []
     for fi in filenames:
         if fi not in [f"{s}.png" for s in ServerIcon]:  # 只上传服务器没有的
@@ -326,12 +328,12 @@ def upload_icon(filenames: list[str]):
         logger.error(f"Unexpected error: {str(e)}")
 
 
-def get_info():
+def get_info(args):
     response = requests.get(args.url + f"/get_info?type={args.type}").json()
     pprint(response)
 
 
-def del_info():
+def del_info(args):
     headers = {
         'API-KEY': args.key,
         'Content-Type': 'application/json'
@@ -408,7 +410,7 @@ def args_parser():
             raise argparse.ArgumentTypeError(f"报告周期必须大于 10 秒，当前值为 {value}")
         return value
 
-    parser = argparse.ArgumentParser(description='''定时报告程序，可以从环境变量中获取 REPORT_KEY 和 REPORT_URL''')
+    parser = argparse.ArgumentParser(description='''定时报告命令行程序''')
     subparsers = parser.add_subparsers(dest='command', help='可用的命令')
     parser_log = subparsers.add_parser('log', help='查看最新日志')
     parser_log.add_argument("-t", "--tail", type=int, nargs="?", default=10, help="显示的最后几行，默认为10行")
@@ -456,8 +458,8 @@ def args_parser():
                                        parents=[parent_key_parser, parent_url_parser])
     parser_set.add_argument('-tn', '--type-number', nargs='+', action=LimitAction, required=True,
                             dest='limits', help="限制类型 'pc', 'browser', 'phone' 和对应的限制行数")
-    parser_aut = subparsers.add_parser('aut', help='运行应用使用时间统计, 定时上传app_usage.db到服务器',
-                                       parents=[parent_key_parser, parent_url_parser])
+    parser_aut = subparsers.add_parser('aut', help='运行应用使用时间统计, 定时上传app_usage.db到服务器', )
+    # parents=[parent_key_parser, parent_url_parser]
     parser_aut.add_argument('--status', action='store_true', help='查询 "应用使用时间统计" 的进程状态 and exit')
     parser_aut.add_argument('--kill', action='store_true', help='杀死 "应用使用时间统计" 进程 and exit')
     parser_aut.add_argument('--analysis', action='store_true', help='显示应用使用时间统计')
@@ -476,12 +478,13 @@ def args_parser():
     return parser_args
 
 
-def upload_db(sql_path: str):
+def upload_db(args, sql_path: str):
     try:
         # TODO upload_db
         for o in Aut.get_all_names():
             save_exe_icon(o, o.split('\\')[-1])
-        upload_icon(get_allIcon())
+        # upload_icon(args, get_allIcon())
+        print("upload_db")
     except Exception as e:
         logger.error(f"{e}")
 
@@ -499,7 +502,7 @@ def run_aut():
         sys.exit(-1)
 
 
-def main():
+def run(args):
     try:
         p = read_pid(pid_file)
         if is_process_running(p):
@@ -512,7 +515,7 @@ def main():
             f.write(str(os.getpid()))
         print("start...5")
         logger.info("start".center(50, '-'))
-        get_allServerIcon()
+        get_allServerIcon(args)
         time.sleep(5)
         while True:
             if not os.path.exists(pause_file):
@@ -521,34 +524,35 @@ def main():
                     continue  # 如果 result 为 None，则跳过本次循环
                 title, exe_name, hicon = result
                 times = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                send_data_to_api(running_exe=title, report_time=times, exe_name=exe_name, other=get_all_window_info())
+                send_data_to_api(args, running_exe=title, report_time=times, exe_name=exe_name,
+                                 other=get_all_window_info(args))
                 if hicon:
-                    upload_icon([exe_name + ".png"])
+                    upload_icon(args, [exe_name + ".png"])
             time.sleep(int(args.cycle_time))
     except Exception as e:
         logger.fatal(f"{e}")
         sys.exit(-1)
 
 
-def test_main():
+def test_run(args):
     logger.info(f"环境变量 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
     logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, ' '))
     time.sleep(1)
-    get_allServerIcon()
+    get_allServerIcon(args)
     title_t, exe_name_t, hicon_t = get_active_window_title()
     time_t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    send_data_to_api(running_exe=title_t, report_time=time_t, exe_name=exe_name_t, other=get_all_window_info())
+    send_data_to_api(args, running_exe=title_t, report_time=time_t, exe_name=exe_name_t,
+                     other=get_all_window_info(args))
     if hicon_t:
-        upload_icon([exe_name_t + ".png"])
+        upload_icon(args, [exe_name_t + ".png"])
 
 
-if __name__ == "__main__":
-    args = args_parser()
+def main(args):
     if args.command == 'run':
         if args.test:
-            test_main()
+            test_run(args)
             sys.exit(0)
-        main()
+        run(args)
     if args.command == 'aut':
         if args.status:
             check_process(Aut.aut_pid_file, check_pause=False)
@@ -574,13 +578,17 @@ if __name__ == "__main__":
     elif args.command == 'log':
         logcat(args.tail)
     elif args.command == 'getlimit':
-        get_limit()
+        get_limit(args)
     elif args.command == 'setlimit':
-        set_limit()
+        set_limit(args)
     elif args.command == 'getinfo':
-        get_info()
+        get_info(args)
     elif args.command == 'delinfo':
-        del_info()
+        del_info(args)
     else:
         print("这是一个命令行程序，添加 -h 查看帮助。")
         input("按Enter退出...")
+
+
+if __name__ == "__main__":
+    main(args_parser())

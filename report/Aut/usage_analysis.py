@@ -1,8 +1,9 @@
 import os
 import sqlite3
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sqlite_file = os.path.join(script_dir, "app_usage.db")
+from .logger import APPDATA
+
+sqlite_file = os.path.join(APPDATA, "app_usage.db")
 conn = sqlite3.connect(sqlite_file)
 cursor = conn.cursor()
 
@@ -17,6 +18,7 @@ def print_app_usage_time():
     rows = cursor.fetchall()
     for row in rows:
         print(f"应用名称：{row[0]}, 每小时开始时间：{row[1]}, 总持续时间：{row[2]:.2f}秒")
+    return rows
 
 
 def get_all_names():
@@ -53,6 +55,7 @@ def get_total_duration_for_all():
     ''')
     results = cursor.fetchall()
     total_durations = [{"name": row[0], "total_duration": row[1]} for row in results]
+    print(f"get {len(results)}个应用的总使用时长")
     return total_durations
 
 
@@ -72,14 +75,28 @@ def format_seconds(duration):
     return time_str
 
 
+def seconds2hms(total_duration):
+    hours = int(total_duration) // 3600
+    remaining_seconds = total_duration % 3600
+    minutes = remaining_seconds // 60
+    seconds = remaining_seconds % 60
+    if hours:
+        s = f"{int(total_duration) / 3600:.01f}小时"
+        return s
+    if minutes:
+        return f"{minutes:.0f}分钟"
+    return f"{seconds:.0f}秒"
+
+
+
 def print_analysis():
     """以表格形式打印应用的总使用时长"""
-    print(f"{'应用名称':<16} {'总使用时长':<15} {'路径'}")
+    print(f"{'应用名称':<28} {'总使用时长':<15} {'路径'}")
     print("-" * 70)
     for item in get_total_duration_for_all():
         name = item['name'].split('\\')[-1]
         duration = format_seconds(item['total_duration'])
-        print(f"{name:<20} {duration:<20} {item['name']}")
+        print(f"{name:<30} {duration:<20} {item['name']}")
 
 
 def get_hourly_duration_for_name(name):
