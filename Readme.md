@@ -125,8 +125,7 @@ pip install nuitka
 
 ![image](https://github.com/user-attachments/assets/374906f0-5450-4d5a-9835-5d596998494b)
 
-![image](https://github.com/user-attachments/assets/7023b068-e613-4b9c-8aba-ab41e8a6ac6d)
-
+![image](https://github.com/user-attachments/assets/26480bb0-d956-40ae-a19b-41ab343e4329)
 
 ![image](https://github.com/user-attachments/assets/07d1fdb3-77d3-461e-b36e-89afcd0c2c29)
 
