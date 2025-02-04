@@ -123,7 +123,10 @@ Set-Alias -Name reportw -Value get-reportw
 pip install nuitka
 进入report目录，使用powershell运行build.ps1
 
+![image](https://github.com/user-attachments/assets/374906f0-5450-4d5a-9835-5d596998494b)
+
+![image](https://github.com/user-attachments/assets/7023b068-e613-4b9c-8aba-ab41e8a6ac6d)
 
 
-
+![image](https://github.com/user-attachments/assets/07d1fdb3-77d3-461e-b36e-89afcd0c2c29)
 
