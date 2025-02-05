@@ -153,10 +153,10 @@ def run(upload_callback=None):
             update_app_usage_time()
             time.sleep(1)
             # 检查是否需要上传数据
-            current_time = time.time()
-            if upload_callback and (current_time - last_upload_time) >= 3600:  # 一小时上传一次
-                upload_callback(sqlite_file)
-                last_upload_time = current_time  # 更新上次上传时间
+            # current_time = time.time()
+            # if upload_callback and (current_time - last_upload_time) >= 3600:  # 一小时上传一次
+            #     upload_callback(sqlite_file)
+            #     last_upload_time = current_time  # 更新上次上传时间
     except Exception as e:
         logger.fatal(f"发生异常: {e}")
         on_exit(None, None)

@@ -152,32 +152,38 @@ def get_allIcon():
         return []
 
 
-def save_exe_icon(exe_path, exe_name: str):
+def save_exe_icon(exe_path, exe_name: str, a=32):
+    # 多线程环境下可能表现不稳定，保存部分图片,tk部分设置a=48保存正常??
+    # 与图标绘制的设备上下文（DC）相关
     if os.path.exists(f"{icon_dir}/{exe_name}.png"):
         return True
     try:
-        large, _ = win32gui.ExtractIconEx(exe_path, 0)
-        hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
-        hbmp = win32ui.CreateBitmap()
-        hbmp.CreateCompatibleBitmap(hdc, 32, 32)
-        hdc = hdc.CreateCompatibleDC()
-        hdc.SelectObject(hbmp)
-        if large:
-            hdc.DrawIcon((0, 0), large[0])
-            win32gui.DestroyIcon(large[0])
-        else:
+        large, small = win32gui.ExtractIconEx(exe_path, 0)
+        if small:
+            win32gui.DestroyIcon(small[0])
+        if not large:
             return False
+        hwnd = win32gui.GetDesktopWindow()
+        hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(hwnd))
+        hbmp = win32ui.CreateBitmap()
+        hbmp.CreateCompatibleBitmap(hdc, a, a)
+        hdc_hwnd = hdc.CreateCompatibleDC()
+        hdc_hwnd.SelectObject(hbmp)
+        hdc_hwnd.DrawIcon((0, 0), large[0])
+        win32gui.DestroyIcon(large[0])
         bmpinfo = hbmp.GetInfo()
         bmpstr = hbmp.GetBitmapBits(True)
+        print(bmpinfo, len(bmpstr))
         img = Image.frombuffer(
             'RGBA',
             (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
             bmpstr, 'raw', 'BGRA', 0, 1)
+        img = img.resize((32, 32))
         img.save(f"{icon_dir}/{exe_name}.png", format="PNG")
         logger.info(f"{exe_name}.png save successfully!")
         return True
     except Exception as e:
-        logger.error(str(e))
+        logger.error(f"Error saving icon for {exe_name}: {e}")
         return False
 
 
@@ -422,7 +428,7 @@ def args_parser():
     parent_key_parser.add_argument('-k', '--key', required=report_key is None, help='密钥')
     parent_url_parser = argparse.ArgumentParser(add_help=False)
     parent_url_parser.add_argument('-u', '--url', required=report_url is None, help='api接口, 如: http://127.0.0.1')
-    parser_run = subparsers.add_parser('run', help='运行定时报告程序(使用pythonw可在后台运行)',
+    parser_run = subparsers.add_parser('run', help='运行定时报告程序',
                                        parents=[parent_key_parser, parent_url_parser])
     parser_run.add_argument('--test', action='store_true', help='测试api')
     parser_run.add_argument('-c', '--cycle_time', type=check_cycle_time, help='报告周期(单位秒)', default=600)
@@ -458,7 +464,7 @@ def args_parser():
                                        parents=[parent_key_parser, parent_url_parser])
     parser_set.add_argument('-tn', '--type-number', nargs='+', action=LimitAction, required=True,
                             dest='limits', help="限制类型 'pc', 'browser', 'phone' 和对应的限制行数")
-    parser_aut = subparsers.add_parser('aut', help='运行应用使用时间统计, 定时上传app_usage.db到服务器', )
+    parser_aut = subparsers.add_parser('aut', help='运行应用使用时间统计, 定时上传app_usage.db到服务器(未完成)', )
     # parents=[parent_key_parser, parent_url_parser]
     parser_aut.add_argument('--status', action='store_true', help='查询 "应用使用时间统计" 的进程状态 and exit')
     parser_aut.add_argument('--kill', action='store_true', help='杀死 "应用使用时间统计" 进程 and exit')
@@ -478,15 +484,15 @@ def args_parser():
     return parser_args
 
 
-def upload_db(args, sql_path: str):
-    try:
-        # TODO upload_db
-        for o in Aut.get_all_names():
-            save_exe_icon(o, o.split('\\')[-1])
-        # upload_icon(args, get_allIcon())
-        print("upload_db")
-    except Exception as e:
-        logger.error(f"{e}")
+# def upload_db(args, sql_path: str):
+#     try:
+#         # TODO upload_db
+#         for o in Aut.get_all_names():
+#             save_exe_icon(o, o.split('\\')[-1])
+#         # upload_icon(args, get_allIcon())
+#         print("upload_db")
+#     except Exception as e:
+#         logger.error(f"{e}")
 
 
 def run_aut():
@@ -496,7 +502,7 @@ def run_aut():
             print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
             check_process(Aut.aut_pid_file, check_pause=False)
             sys.exit(0)
-        Aut.run(upload_db)
+        # Aut.run(upload_db)
     except Exception as e:
         logger.fatal(f"{e}")
         sys.exit(-1)
@@ -507,7 +513,7 @@ def run(args):
         p = read_pid(pid_file)
         if is_process_running(p):
             print(
-                f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除.pid文件后重试")
+                f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除report.pid文件后重试")
             check_process(pid_file)
             sys.exit(0)
         # 保存进程ID到文件
@@ -535,7 +541,7 @@ def run(args):
 
 
 def test_run(args):
-    logger.info(f"环境变量 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
+    logger.info(f"配置文件 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
     logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, ' '))
     time.sleep(1)
     get_allServerIcon(args)
@@ -591,4 +597,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(args_parser())
+    # main(args_parser())
+    for o in Aut.get_all_names():
+        save_exe_icon(o, o.split('\\')[-1])

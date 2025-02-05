@@ -16,7 +16,8 @@ log_file = f"{log_dir}/report.{datetime.now().strftime('%Y-%m-%d')}.log"  # æ—¥å
 
 
 def setup_logger(logger_name="main", log_level=logging.INFO):
-    fm = "%(asctime)-15s [%(levelname)s] [%(funcName)s:%(lineno)d] %(message)s"
+    # [%(threadName)s]
+    fm = "%(asctime)-12s [%(levelname)s] [%(filename)s %(funcName)s:%(lineno)d] %(message)s"
     logging.basicConfig(format=fm, level=log_level, handlers=[logging.StreamHandler(sys.stdout)])
     lo = logging.getLogger(logger_name)
     file_handler = RotatingFileHandler(

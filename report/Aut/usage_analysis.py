@@ -28,7 +28,6 @@ def get_all_names():
     FROM app_usage
     ''')
     rows = cursor.fetchall()
-    # 提取所有名称并返回
     names = [row[0] for row in rows]
     return names
 

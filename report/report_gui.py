@@ -12,18 +12,16 @@ from PIL import ImageTk, Image
 from ttkbootstrap import Window
 from ttkbootstrap.constants import *
 
-from Aut.config import cfg, setting_config
-from Aut.logger import log_dir
-from Aut.usage_analysis import get_total_duration_for_all, seconds2hms
+import Aut
 from report import (check_process, pid_file, is_process_running, read_pid, kill_process, resume_process, pause_process,
-                    Aut, Exclude_Process, icon_dir, save_exe_icon)
+                    Exclude_Process, icon_dir, save_exe_icon)
 
 
 def get_log_files():
-    if not os.path.exists(log_dir):
+    if not os.path.exists(Aut.log_dir):
         return []
-    log_files = [f for f in os.listdir(log_dir) if f.endswith(".log")]
-    log_files.sort(key=lambda x: os.path.getmtime(os.path.join(log_dir, x)), reverse=True)
+    log_files = [f for f in os.listdir(Aut.log_dir) if f.endswith(".log")]
+    log_files.sort(key=lambda x: os.path.getmtime(os.path.join(Aut.log_dir, x)), reverse=True)
     return log_files
 
 
@@ -37,11 +35,42 @@ def stop_aut():
     messagebox.showinfo("info", m)
 
 
+def open_folder(path, select=False):
+    """
+    打开文件所在目录，并定位到文件。
+    :param path: 文件或目录的路径
+    :param select: 是否定位到文件（仅在 Windows 上有效）
+    """
+    try:
+        if os.name == 'nt':  # Windows
+            if select:
+                os.system(f'explorer /select,"{path}"')
+            else:
+                os.startfile(path)
+        elif os.name == 'posix':  # macOS 或 Linux
+            if sys.platform == 'darwin':  # macOS
+                subprocess.run(['open', path], check=True)
+            else:  # Linux
+                subprocess.run(['xdg-open', path], check=True)
+        else:
+            messagebox.showerror("错误", f"不支持的操作系统, {path=}")
+    except Exception as e:
+        messagebox.showerror("错误", f"无法打开路径: {path}\n错误信息: {e}")
+
+
+def save_icon():
+    for o in Aut.get_all_names():
+        save_exe_icon(o, o.split('\\')[-1], a=48)
+
+
 class mainWindows(ttk.Frame):
     theme_list = ['cosmo', 'flatly', 'litera', 'minty', 'lumen', 'sandstone', 'yeti', 'pulse', 'united', 'morph',
                   'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
 
     def __init__(self, master: Window):
+        self.app_frames = None
+        self.scrollable_frame = None
+        self.canvas = None
         self.remove_button = None
         self.add_button = None
         self.add_entry = None
@@ -89,7 +118,7 @@ class mainWindows(ttk.Frame):
         # 重定向标准输出到队列
         self.output_queue = queue.Queue()
         sys.stdout = self.RedirectOutput(self.output_queue)
-        sys.stderr = self.RedirectOutput(self.output_queue)
+        # sys.stderr = self.RedirectOutput(self.output_queue)# logger使用
         # 定期更新输出框
         self.update_output_viewer()
 
@@ -179,9 +208,10 @@ class mainWindows(ttk.Frame):
             messagebox.showerror("错误", f"{self.key=},{self.url=}")
             return
         if os.path.exists("report.exe"):
-            _args = ["report.exe", "run", "-c", "600", "-k", self.key, "-u", self.url]
+            # TODO: 600可更改 去掉, "-k", self.key, "-u", self.url
+            _args = ["report.exe", "run", "-c", "600"]
         else:
-            _args = ["python", "report.py", "run", "-c", "600", "-k", self.key, "-u", self.url]
+            _args = ["python", "report.py", "run", "-c", "600"]
         try:
             self.process = subprocess.Popen(_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
@@ -287,7 +317,7 @@ class mainWindows(ttk.Frame):
         selected_file = self.log_file_var.get()
         if not selected_file:
             return
-        log_path = os.path.join(log_dir, selected_file)
+        log_path = os.path.join(Aut.log_dir, selected_file)
         if not os.path.exists(log_path):
             return
         try:
@@ -378,29 +408,29 @@ class mainWindows(ttk.Frame):
     def save_settings(self):
         self.key = self.key_entry.get()
         self.url = self.url_entry.get()
-        cfg.set("DEFAULT", "key", self.key)
-        cfg.set("DEFAULT", "url", self.url)
-        cfg.set("DEFAULT", "theme", self.theme_var.get())
-        cfg.set("DEFAULT", "exclude_process", ",".join(self.exclude_list.get(0, END)))
+        Aut.cfg.set("DEFAULT", "key", self.key)
+        Aut.cfg.set("DEFAULT", "url", self.url)
+        Aut.cfg.set("DEFAULT", "theme", self.theme_var.get())
+        Aut.cfg.set("DEFAULT", "exclude_process", ",".join(self.exclude_list.get(0, END)))
         self.notebook.update_idletasks()
-        cfg.set("DEFAULT", "height", str(self.notebook.winfo_height()))
-        cfg.set("DEFAULT", "width", str(self.notebook.winfo_width()))
-        e, m = setting_config(cfg)
+        Aut.cfg.set("DEFAULT", "height", str(self.notebook.winfo_height()))
+        Aut.cfg.set("DEFAULT", "width", str(self.notebook.winfo_width()))
+        e, m = Aut.setting_config(Aut.cfg)
         if e:
             messagebox.showinfo("info", f"{m}")
         else:
             messagebox.showerror("错误", f"{m}")
 
     def load_settings(self):
-        self.theme_var.set(cfg.get("DEFAULT", "theme", fallback="darkly"))
-        height = int(cfg.get("DEFAULT", "height", fallback=800))
-        width = int(cfg.get("DEFAULT", "width", fallback=900))
+        self.theme_var.set(Aut.cfg.get("DEFAULT", "theme", fallback="darkly"))
+        height = int(Aut.cfg.get("DEFAULT", "height", fallback=800))
+        width = int(Aut.cfg.get("DEFAULT", "width", fallback=900))
         self.notebook.configure(height=height, width=width)
         self.key_entry.delete(0, END)
-        self.key = cfg.get("DEFAULT", "key", fallback="")
+        self.key = Aut.cfg.get("DEFAULT", "key", fallback="")
         self.key_entry.insert(0, self.key)
         self.url_entry.delete(0, END)
-        self.url = cfg.get("DEFAULT", "url", fallback="")
+        self.url = Aut.cfg.get("DEFAULT", "url", fallback="")
         self.url_entry.insert(0, self.url)
         self.exclude_list.delete(0, END)
         for process in Exclude_Process:
@@ -415,7 +445,7 @@ class mainWindows(ttk.Frame):
         usage_ctrl_frame.pack(fill=BOTH, padx=10, pady=5)
         refresh_button = ttk.Button(usage_ctrl_frame, text="刷新", command=self.load_usage_data)
         refresh_button.pack(side="left", padx=5, pady=5)
-        save_icon_button = ttk.Button(usage_ctrl_frame, text="save icon", command=self.save_icon)
+        save_icon_button = ttk.Button(usage_ctrl_frame, text="save icon", command=save_icon)
         save_icon_button.pack(side="left", padx=5, pady=5)
         self.canvas = tk.Canvas(row)
         scrollbar = ttk.Scrollbar(row, orient="vertical", command=self.canvas.yview)
@@ -438,12 +468,8 @@ class mainWindows(ttk.Frame):
         self.app_frames = []
         self.load_usage_data()
 
-    def save_icon(self):
-        for o in Aut.get_all_names():
-            save_exe_icon(o, o.split('\\')[-1])
-
     def load_usage_data(self):
-        usage_data = get_total_duration_for_all()
+        usage_data = Aut.get_total_duration_for_all()
         max_duration = max(row["total_duration"] for row in usage_data) if usage_data else 1
         for frame in self.app_frames:
             frame.destroy()
@@ -472,7 +498,7 @@ class mainWindows(ttk.Frame):
         progress = ttk.Progressbar(app_frame, orient="horizontal", length=200, mode="determinate")
         progress["value"] = (total_duration / max_duration) * 100
         progress.pack(side="left", padx=5)
-        duration_label = ttk.Label(app_frame, text=f"{seconds2hms(total_duration)}", width=10, anchor="e")
+        duration_label = ttk.Label(app_frame, text=f"{Aut.seconds2hms(total_duration)}", width=10, anchor="e")
         duration_label.pack(side="left", padx=5)
 
     def create_about(self):
@@ -486,6 +512,31 @@ class mainWindows(ttk.Frame):
         label2 = ttk.Label(row, text="https://github.com/2412322029/seeme", foreground="#2AADFF", cursor="hand2")
         label2.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         label2.bind("<Button-1>", open_url)
+
+        button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
+        button1.grid(row=1, column=0, pady=15, padx=5, sticky="w")
+        button1 = ttk.Button(row, text="打开数据文件夹", command=lambda: open_folder(path=Aut.APPDATA))
+        button1.grid(row=1, column=1, pady=15, padx=5, sticky="w")
+
+        def getsize(f):
+            try:
+                kb = os.path.getsize(f) // 1024
+                if kb < 1024:
+                    return f"{kb} KB"
+                else:
+                    return f"{kb / 1024} MB"
+            except Exception as e:
+                return str(e)
+
+        ttk.Label(row, text="数据库文件大小：").grid(row=2, column=0, padx=5, pady=5, sticky="ew")
+        ttk.Label(row, text=getsize(Aut.sqlite_file)).grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+
+        def open_folder_and_select_file(event):
+            open_folder(path=Aut.sqlite_file, select=True)
+
+        label3 = ttk.Label(row, text=Aut.sqlite_file, foreground="#2AADFF", cursor="hand2")
+        label3.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        label3.bind("<Button-1>", open_folder_and_select_file)
 
 
 def main():
