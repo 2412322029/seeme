@@ -597,6 +597,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # main(args_parser())
-    for o in Aut.get_all_names():
-        save_exe_icon(o, o.split('\\')[-1])
+    main(args_parser())
+    # for o in Aut.get_all_names():
+    #     save_exe_icon(o, o.split('\\')[-1])

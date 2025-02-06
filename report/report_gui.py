@@ -1,9 +1,11 @@
+import functools
 import os
 import queue
 import subprocess
 import sys
 import threading
 import tkinter as tk
+import traceback
 import webbrowser
 from tkinter import messagebox
 
@@ -15,6 +17,18 @@ from ttkbootstrap.constants import *
 import Aut
 from report import (check_process, pid_file, is_process_running, read_pid, kill_process, resume_process, pause_process,
                     Exclude_Process, icon_dir, save_exe_icon)
+
+
+def catch_errors(func):
+    @functools.wraps(func)
+    def wrapper(*a, **k):
+        try:
+            return func(*a, **k)
+        except Exception:
+            error_message = traceback.format_exc()
+            messagebox.showerror("错误", f"发生错误：\n{error_message}")
+
+    return wrapper
 
 
 def get_log_files():
@@ -68,35 +82,9 @@ class mainWindows(ttk.Frame):
                   'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
 
     def __init__(self, master: Window):
-        self.app_frames = None
-        self.scrollable_frame = None
-        self.canvas = None
-        self.remove_button = None
-        self.add_button = None
-        self.add_entry = None
-        self.exclude_list = None
-        self.key_entry = None
-        self.url_entry = None
-        self.theme_var = None
-        self.log_text = None
-        self.log_file_var = None
-        self.output_thread2 = None
-        self.process2 = None
-        self.output_thread = None
-        self.process = None
-        self.output_frame = None
-        self.analysis_button = None
-        self.tree2 = None
-        self.stop2_button = None
-        self.clear_button = None
-        self.run2_button = None
-        self.tree = None
-        self.resume_button = None
-        self.pause_button = None
-        self.stop_button = None
-        self.run_button = None
         self.report_running = False
         self.aut_running = False
+        self.cycle_time = 600
         self.app = master
         self.app.minsize(width=950, height=800)
         super().__init__(master, padding=5)
@@ -209,10 +197,11 @@ class mainWindows(ttk.Frame):
             return
         if os.path.exists("report.exe"):
             # TODO: 600可更改 去掉, "-k", self.key, "-u", self.url
-            _args = ["report.exe", "run", "-c", "600"]
+            _args = ["report.exe", "run", "-c", str(self.cycle_time)]
         else:
-            _args = ["python", "report.py", "run", "-c", "600"]
+            _args = ["python", "report.py", "run", "-c", str(self.cycle_time)]
         try:
+            print(" ".join(_args))
             self.process = subprocess.Popen(_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
                                             bufsize=1, encoding="utf-8")
@@ -351,34 +340,60 @@ class mainWindows(ttk.Frame):
         theme_combo.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         # 服务器地址
         ttk.Label(row, text="服务器地址:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
-        self.url_entry = ttk.Entry(row, width=50)
+        self.url_entry = ttk.Entry(row, width=50, validatecommand=self.validate_url, validate="focusout")
         self.url_entry.grid(row=1, column=1, padx=5, pady=5)
 
         # 密钥
         ttk.Label(row, text="服务器密钥:").grid(row=2, column=0, padx=5, pady=5, sticky="w")
-        self.key_entry = ttk.Entry(row, width=50)
+        self.key_entry = ttk.Entry(row, width=50, show="*", name="a")
         self.key_entry.grid(row=2, column=1, padx=5, pady=5)
 
+        ttk.Label(row, text="报告周期(s)>300:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+        self.cycle_time_entry = ttk.Entry(row, validatecommand=self.validate_cycle_time, validate="focusout")
+        self.cycle_time_entry.grid(row=3, column=1, padx=5, pady=5, sticky="ew")
         # 排除进程
-        ttk.Label(row, text="报告程序排除的进程（,分割添加多个）:").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+        ttk.Label(row, text="报告程序排除的进程（,分割添加多个）:").grid(row=4, column=0, padx=5, pady=5, sticky="w")
         self.exclude_list = tk.Listbox(row, width=50, height=10, selectmode="extended")
-        self.exclude_list.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.exclude_list.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
         self.add_entry = ttk.Entry(row)
-        self.add_entry.grid(row=5, column=0, padx=5, pady=5, sticky="ew")
+        self.add_entry.grid(row=6, column=0, padx=5, pady=5, sticky="ew")
         self.add_button = ttk.Button(row, text="添加", command=self.add_exclude_process)
-        self.add_button.grid(row=5, column=1, padx=5, pady=5, sticky="w")
+        self.add_button.grid(row=6, column=1, padx=5, pady=5, sticky="w")
         self.remove_button = ttk.Button(row, text="删除选中", command=self.remove_exclude_process,
                                         bootstyle="danger-outline")
-        self.remove_button.grid(row=5, column=1, padx=5, pady=5, sticky="e")
+        self.remove_button.grid(row=6, column=1, padx=5, pady=5, sticky="e")
 
         reload_button = ttk.Button(row, text="重载配置", command=self.load_settings, bootstyle="warning-outline")
-        reload_button.grid(row=6, column=0, pady=15, padx=5, sticky="w")
+        reload_button.grid(row=7, column=0, pady=15, padx=5, sticky="w")
         # 保存按钮
         save_button = ttk.Button(row, text="保存", command=self.save_settings, bootstyle="success-outline")
-        save_button.grid(row=6, column=1, pady=15, padx=5, sticky="e")
+        save_button.grid(row=7, column=1, pady=15, padx=5, sticky="e")
 
         # 加载设置
         self.load_settings()
+
+    def validate_url(self):
+        if self.url_entry.get().startswith("http://") or self.url_entry.get().startswith("https://"):
+            return True
+        else:
+            messagebox.showerror("验证失败", "服务器地址必须以 'http://' 或 'https://' 开头！")
+            return False
+
+    def validate_cycle_time(self):
+        try:
+            cycle_time = int(self.cycle_time_entry.get())
+            if 300 < cycle_time < 86400:
+                return True
+            else:
+                messagebox.showerror("验证失败", "输入值必须大于5分钟（300秒）且小于1天（86400秒）")
+                self.cycle_time_entry.delete(0, END)
+                self.cycle_time_entry.insert(0, "600")
+                return False
+        except ValueError:
+            messagebox.showerror("验证失败", "请输入有效的整数！")
+            self.cycle_time_entry.delete(0, END)
+            self.cycle_time_entry.insert(0, "600")
+            return False
 
     def on_theme_changed(self, *args):
         selected_theme = self.theme_var.get()
@@ -405,9 +420,13 @@ class mainWindows(ttk.Frame):
         else:
             messagebox.showerror("错误", "列表中没有选中的项")
 
+    @catch_errors
     def save_settings(self):
+        if not (self.validate_url() and self.validate_cycle_time()):
+            return
         self.key = self.key_entry.get()
         self.url = self.url_entry.get()
+        self.cycle_time = self.cycle_time_entry.get()
         Aut.cfg.set("DEFAULT", "key", self.key)
         Aut.cfg.set("DEFAULT", "url", self.url)
         Aut.cfg.set("DEFAULT", "theme", self.theme_var.get())
@@ -415,23 +434,28 @@ class mainWindows(ttk.Frame):
         self.notebook.update_idletasks()
         Aut.cfg.set("DEFAULT", "height", str(self.notebook.winfo_height()))
         Aut.cfg.set("DEFAULT", "width", str(self.notebook.winfo_width()))
+        Aut.cfg.set("DEFAULT", "cycle_time", str(self.cycle_time))
         e, m = Aut.setting_config(Aut.cfg)
         if e:
             messagebox.showinfo("info", f"{m}")
         else:
             messagebox.showerror("错误", f"{m}")
 
+    @catch_errors
     def load_settings(self):
-        self.theme_var.set(Aut.cfg.get("DEFAULT", "theme", fallback="darkly"))
+        self.theme_var.set(Aut.cfg.get("DEFAULT", "theme", fallback="cyborg"))
         height = int(Aut.cfg.get("DEFAULT", "height", fallback=800))
         width = int(Aut.cfg.get("DEFAULT", "width", fallback=900))
+        self.cycle_time = int(Aut.cfg.get("DEFAULT", "cycle_time", fallback=600))
+        self.key = Aut.cfg.get("DEFAULT", "key", fallback="")
+        self.url = Aut.cfg.get("DEFAULT", "url", fallback="")
         self.notebook.configure(height=height, width=width)
         self.key_entry.delete(0, END)
-        self.key = Aut.cfg.get("DEFAULT", "key", fallback="")
         self.key_entry.insert(0, self.key)
         self.url_entry.delete(0, END)
-        self.url = Aut.cfg.get("DEFAULT", "url", fallback="")
         self.url_entry.insert(0, self.url)
+        self.cycle_time_entry.delete(0, END)
+        self.cycle_time_entry.insert(0, str(self.cycle_time))
         self.exclude_list.delete(0, END)
         for process in Exclude_Process:
             self.exclude_list.insert("end", process)
@@ -540,7 +564,7 @@ class mainWindows(ttk.Frame):
 
 
 def main():
-    app = ttk.Window("Report", "darkly")
+    app = ttk.Window("Report", "cyborg")
     try:
         app.iconbitmap("icon.ico")
     except Exception as e:
