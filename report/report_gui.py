@@ -82,6 +82,9 @@ class mainWindows(ttk.Frame):
                   'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
 
     def __init__(self, master: Window):
+        self.is_download = False
+        self.info_queue = None
+        self.update_info = None
         self.report_running = False
         self.aut_running = False
         self.cycle_time = 600
@@ -363,11 +366,35 @@ class mainWindows(ttk.Frame):
                                         bootstyle="danger-outline")
         self.remove_button.grid(row=6, column=1, padx=5, pady=5, sticky="e")
 
+        button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
+        button1.grid(row=7, column=0, pady=15, padx=5, sticky="w")
+        button1 = ttk.Button(row, text="打开数据文件夹", command=lambda: open_folder(path=Aut.APPDATA))
+        button1.grid(row=7, column=0, pady=15, padx=5, sticky="e")
+
+        def getsize(f):
+            try:
+                kb = os.path.getsize(f) // 1024
+                if kb < 1024:
+                    return f"{kb} KB"
+                else:
+                    return f"{kb / 1024} MB"
+            except Exception as e:
+                return str(e)
+
+        def open_folder_and_select_file(event):
+            open_folder(path=Aut.sqlite_file, select=True)
+
+        ttk.Label(row, text="数据库文件：").grid(row=7, column=1, padx=5, pady=5, sticky="w")
+        label3 = ttk.Label(row, text=f"{Aut.sqlite_file.split("\\")[-1]} {getsize(Aut.sqlite_file)}",
+                           foreground="#2AADFF", cursor="hand2")
+        label3.grid(row=7, column=1, columnspan=2, padx=5, pady=5, sticky="e")
+        label3.bind("<Button-1>", open_folder_and_select_file)
+
         reload_button = ttk.Button(row, text="重载配置", command=self.load_settings, bootstyle="warning-outline")
-        reload_button.grid(row=7, column=0, pady=15, padx=5, sticky="w")
+        reload_button.grid(row=8, column=0, pady=15, padx=5, sticky="w")
         # 保存按钮
         save_button = ttk.Button(row, text="保存", command=self.save_settings, bootstyle="success-outline")
-        save_button.grid(row=7, column=1, pady=15, padx=5, sticky="e")
+        save_button.grid(row=8, column=1, pady=15, padx=5, sticky="e")
 
         # 加载设置
         self.load_settings()
@@ -525,42 +552,115 @@ class mainWindows(ttk.Frame):
         duration_label = ttk.Label(app_frame, text=f"{Aut.seconds2hms(total_duration)}", width=10, anchor="e")
         duration_label.pack(side="left", padx=5)
 
+    def remove_temp(self, progress_text=None):
+        # 删除tmp目录下所有内容
+        for root, dirs, files in os.walk(Aut.temp_dir, topdown=False):
+            if files:
+                if messagebox.askquestion("删除临时文件夹下所有内容",
+                                          f"临时文件夹存在上次下载的文件,可能导致下载失败.\n"
+                                          f"删除以下文件\n{'\n'.join(files)}") == "yes":
+                    for name in files:
+                        file_path = os.path.join(root, name)
+                        if progress_text:
+                            progress_text.config(text=f"remove {file_path}")
+                        os.remove(file_path)  # 删除文件
+                        print(f"remove {file_path}")
+                    for name in dirs:
+                        dir_path = os.path.join(root, name)
+                        os.rmdir(dir_path)  # 删除子目录
+            else:
+                print("temp_dir no file to remove.")
+
+    def show_and_download(self, event):
+        if self.is_download:
+            messagebox.showinfo("info", "进行中")
+            return
+        if not self.update_info:
+            return
+
+        self.is_download = True
+        # self.info_label.config(text=f"")
+        download_text = ttk.Label(self.about_row, text="开始下载更新文件...")
+        download_text.grid(row=3, column=0, columnspan=10, padx=5, pady=5, sticky="w")
+        progress = ttk.Progressbar(self.about_row, orient="horizontal", length=400, mode="determinate")
+        progress.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
+        zip_name = self.update_info["assets"][0]["name"]
+        zip_url = self.update_info["assets"][0]["url"]
+        sum_name = self.update_info["assets"][1]["name"]
+        sum_url = self.update_info["assets"][1]["url"]
+        self.remove_temp(download_text)
+        now_name = ""
+        now_type = "下载"
+
+        def do_check_file():
+            nonlocal now_type
+            now_type = "校验完整性"
+            zip_file = os.path.join(Aut.temp_dir, zip_name)
+            sum_file = os.path.join(Aut.temp_dir, sum_name)
+            ok, msg = Aut.check_file_integrity(str(zip_file), sum_file,
+                                               progress_callback=update_progress, t=download_text)
+            # TODO 线程中，拿不到返回值
+            download_text.config(text=f"{msg}")
+            self.is_download = False  # 结束
+
+        def download_sum():
+            nonlocal now_name
+            now_name = sum_name
+            Aut.download_file(sum_name, sum_url, Aut.temp_dir,
+                              progress_callback=update_progress, when_ok=do_check_file)
+
+        def b2mb(b):
+            return f"{b / (1024 * 1024):.2f}"
+
+        def update_progress(current_size, total_size):
+            progress["value"] = (current_size / total_size) * 100
+            bf = f"{(current_size / total_size) * 100:.1f}%"
+            download_text.config(
+                text=f"{now_type}{now_name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
+            self.about_row.update_idletasks()
+
+        now_name = zip_name
+        Aut.download_file(zip_name, zip_url, Aut.temp_dir,
+                          progress_callback=update_progress, when_ok=download_sum)
+        # do_check_file()
+
     def create_about(self):
         def open_url(event):
             webbrowser.open("https://github.com/2412322029/seeme")
 
-        row = ttk.Frame()
-        row.pack(fill="both", expand=True)
-        self.notebook.add(row, text="关于", state="normal")
-        ttk.Label(row, text="Home page:").grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-        label2 = ttk.Label(row, text="https://github.com/2412322029/seeme", foreground="#2AADFF", cursor="hand2")
-        label2.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.about_row = ttk.Frame()
+        self.about_row.pack(fill="both", expand=True)
+        self.notebook.add(self.about_row, text="关于", state="normal")
+        ttk.Label(self.about_row, text="Home page:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        label2 = ttk.Label(self.about_row, text="https://github.com/2412322029/seeme", foreground="#2AADFF",
+                           cursor="hand2")
+        label2.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         label2.bind("<Button-1>", open_url)
+        ttk.Label(self.about_row, text=f"version:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        ttk.Label(self.about_row, text=f"{Aut.__version__}").grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
-        button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
-        button1.grid(row=1, column=0, pady=15, padx=5, sticky="w")
-        button1 = ttk.Button(row, text="打开数据文件夹", command=lambda: open_folder(path=Aut.APPDATA))
-        button1.grid(row=1, column=1, pady=15, padx=5, sticky="w")
+        self.info_label = ttk.Label(self.about_row, text="当前是最新版", foreground="#2AADFF", cursor="hand2")
+        self.info_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        self.info_label.bind("<Button-1>", self.show_and_download)
 
-        def getsize(f):
-            try:
-                kb = os.path.getsize(f) // 1024
-                if kb < 1024:
-                    return f"{kb} KB"
-                else:
-                    return f"{kb / 1024} MB"
-            except Exception as e:
-                return str(e)
+        def show_info():
+            info = self.info_queue.get()
+            if info:
+                self.update_info = info
+                if Aut.__version__ == info["version"]:
+                    messagebox.showinfo(f"info", f"{Aut.__version__}是最新版。")
+                elif Aut.__version__ < info["version"]:
+                    messagebox.askquestion(f"有新版本!", f"{Aut.__version__} ->"
+                                                         f" {info["version"]}\n{info["body"]}")
+                    self.info_label.config(text=f"{info["version"]} is new , Click to download", state=NORMAL)
 
-        ttk.Label(row, text="数据库文件大小：").grid(row=2, column=0, padx=5, pady=5, sticky="ew")
-        ttk.Label(row, text=getsize(Aut.sqlite_file)).grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+        def get_update(event):
+            self.info_queue, _ = Aut.run_in_thread(Aut.get_update_info)()
+            Aut.run_in_thread(show_info)()
 
-        def open_folder_and_select_file(event):
-            open_folder(path=Aut.sqlite_file, select=True)
-
-        label3 = ttk.Label(row, text=Aut.sqlite_file, foreground="#2AADFF", cursor="hand2")
-        label3.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-        label3.bind("<Button-1>", open_folder_and_select_file)
+        label3 = ttk.Label(self.about_row, text="检查更新", foreground="#2AADFF", cursor="hand2")
+        label3.grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        label3.bind("<Button-1>", get_update)
 
 
 def main():

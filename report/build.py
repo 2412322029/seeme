@@ -37,7 +37,10 @@ def print_header(text: str) -> None:
 
 
 def check_tool(tool_name: str) -> None:
-    if not shutil.which(tool_name):
+    r = shutil.which(tool_name)
+    if r:
+        print_color(f"use {tool_name} -> {r}", "92")
+    else:
         print_color(f"错误：未找到必要工具 {tool_name}，请安装并添加到PATH环境变量", "91")
         exit(1)
 
@@ -95,13 +98,17 @@ def get_version_info() -> Tuple[bool, str]:
         print_color("无效输入，请重新选择", "91")
 
     # 更新版本号
-    for i in range(level, -1, -1):
-        if i == level:
-            parts[i] += 1
-        else:
-            parts[i] = 0
+    if level == 0:  # 主版本号递增
+        parts[0] += 1
+        parts[1] = 0
+        parts[2] = 0
+    elif level == 1:  # 次版本号递增
+        parts[1] += 1
+        parts[2] = 0
+    elif level == 2:  # 补丁版本递增
+        parts[2] += 1
     new_version = ".".join(map(str, parts))
-
+    input(f"{new_version=}(Press Enter to continue)")
     try:
         with open(version_file, "w", encoding="utf-8") as f:
             new_content = re.sub(
@@ -124,7 +131,7 @@ def build_gui_app(config: BuildConfig) -> None:
         f"--enable-plugin=tk-inter --windows-icon-from-ico={CONFIG['icon_source']} "
         f"--output-filename={CONFIG['gui_filename']} --output-dir={CONFIG['output_dir']} "
         f"--no-deployment-flag=self-execution --windows-console-mode=disable "
-        f"--product-name=report --file-version={config.new_version} report_gui.py"
+        f"--product-name=report --file-version={config.new_version}.0 report_gui.py"
     )
     execute_command(command)
 
@@ -147,7 +154,7 @@ def build_cli_app(config: BuildConfig) -> None:
     print_header("开始构建CLI应用程序")
     command = (
         f"nuitka --standalone --follow-imports --lto=yes "
-        f"--product-name=report_cli --file-version={config.new_version} "
+        f"--product-name=report_cli --file-version={config.new_version}.0 "
         f"--output-filename={CONFIG['cli_filename']} --output-dir={CONFIG['output_dir']} report.py"
     )
     execute_command(command)
@@ -220,7 +227,7 @@ def main():
 
     config.build_gui = input("是否构建GUI应用？ (y/n): ").lower() == "y"
     config.build_cli = input("是否构建CLI应用？ (y/n): ").lower() == "y"
-    config.use_upx = input("是否使用UPX压缩？ (y/n): ").lower() == "y"
+    config.use_upx = input("是否使用UPX压缩CLI？ (y/n): ").lower() == "y"
     config.use_7z = input("是否创建7z压缩包？ (y/n): ").lower() == "y"
 
     # 前置检查
@@ -228,6 +235,8 @@ def main():
         check_tool(CONFIG["upx_path"])
     if config.use_7z:
         check_tool(CONFIG["7z_path"])
+    if config.build_gui or config.build_cli:
+        check_tool("nuitka")
 
     # 执行构建流程
     try:
