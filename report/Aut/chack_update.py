@@ -103,24 +103,6 @@ def b2mb(b):
     return f"{b / (1024 * 1024):.2f}"
 
 
-def remove_temp():
-    # 删除tmp目录下所有内容
-    for root, dirs, files in os.walk(temp_dir, topdown=False):
-        if files:
-            if messagebox.askquestion("删除临时文件夹下所有内容",
-                                      f"临时文件夹存在上次下载的文件,可能导致下载失败.\n"
-                                      f"删除以下文件\n{'\n'.join(files)}") == "yes":
-                for name in files:
-                    file_path = os.path.join(root, name)
-                    os.remove(file_path)  # 删除文件
-                    print(f"remove {file_path}")
-                for name in dirs:
-                    dir_path = os.path.join(root, name)
-                    os.rmdir(dir_path)  # 删除子目录
-        else:
-            print("temp_dir no file to remove.")
-
-
 @run_in_thread
 def download_file(name, url, save_dir, s=None, do_next=None):
     os.makedirs(save_dir, exist_ok=True)
@@ -133,40 +115,40 @@ def download_file(name, url, save_dir, s=None, do_next=None):
             do_next()
         return
     try:
-        # logger.info(f"download {url}")
-        # response = requests.get(url, stream=True)
-        # response.raise_for_status()
-        # total_size = int(response.headers.get('content-length', 0))
-        # with open(temp_path, 'wb') as file:
-        #     current_size = 0
-        #     for chunk in response.iter_content(chunk_size=8192):
-        #         if chunk:
-        #             file.write(chunk)
-        #             current_size += len(chunk)
-        #                 if s:
-        #                     s.download_progress["value"] = (current_size / total_size) * 100
-        #                     s.about_row.update_idletasks()
-        #                     bf = f"{(current_size / total_size) * 100:.1f}%"
-        #                     s.download_text.config(
-        #                     text=f"下载{name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
-        # os.rename(temp_path, save_path)
-
-        print(f"开始模拟下载：{url}")
-        total_size = 1024 * 1024 * 10
-        current_size = 0
-        while current_size < total_size:
-            chunk_size = min(8192, total_size - current_size)
-            current_size += chunk_size
-            if s:
-                s.download_progress["value"] = (current_size / total_size) * 100
-                s.about_row.update_idletasks()
-                bf = f"{(current_size / total_size) * 100:.1f}%"
-                s.download_text.config(text=f"下载{name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
-            time.sleep(0.02)
-        print("文件下载完成")
+        logger.info(f"download {url}")
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        total_size = int(response.headers.get('content-length', 0))
+        with open(temp_path, 'wb') as file:
+            current_size = 0
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    file.write(chunk)
+                    current_size += len(chunk)
+                    if s:
+                        s.download_progress["value"] = (current_size / total_size) * 100
+                        s.about_row.update_idletasks()
+                        bf = f"{(current_size / total_size) * 100:.1f}%"
+                        s.download_text.config(
+                            text=f"下载{name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
+        os.rename(temp_path, save_path)
+        # print(f"开始模拟下载：{url}")
+        # total_size = 1024 * 1024 * 10
+        # current_size = 0
+        # while current_size < total_size:
+        #     chunk_size = min(8192, total_size - current_size)
+        #     current_size += chunk_size
+        #     if s:
+        #         s.download_progress["value"] = (current_size / total_size) * 100
+        #         s.about_row.update_idletasks()
+        #         bf = f"{(current_size / total_size) * 100:.1f}%"
+        #         s.download_text.config(text=f"下载{name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
+        #     time.sleep(0.02)
+        # print("文件下载完成")
 
         msg = f"文件 {name} 已成功下载到 {save_path}"
         logger.info(msg)
+        time.sleep(2)
         if do_next:
             do_next()
     except Exception as e:
@@ -259,10 +241,11 @@ def unzip_file(zip_file: str, s):
             messagebox.showinfo("dev", "源码运行，无需覆盖")
             return
         exe_local = os.path.dirname(sys.argv[0])
-        cmd = f'{os.path.join(exe_local, "update.exe")} {os.path.join(extract_to, "report_gui.dist")} {exe_local} {os.getpid()}'
+        cmd = (f'{os.path.join(exe_local, "update.exe")}'
+               f' {os.path.join(extract_to, "report_gui.dist")} {exe_local} {os.getpid()}')
+        cmd += " && pause"
         logger.info(cmd)
         os.system(cmd)
-
         # run update.exe
         # Usage: update <source_dir> <target_dir> <pid>
     except Exception as e:

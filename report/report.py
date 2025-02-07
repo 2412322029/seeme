@@ -64,19 +64,20 @@ def check_process(pf, check_pause=True, pt=True):
     try:
         pid = read_pid(pf)
         info["pid"] = pid
-        ifPrint(f"pid(file)  :{pid}", IF=pt)
+        ifPrint(f"pid(file)   :{pid}", IF=pt)
         if is_process_running(pid):
             process = psutil.Process(pid)
             info["status"] = process.status()
-            info["memory"] = process.memory_info().rss // (1024 ** 2)
+            rss, vms = process.memory_info().rss, process.memory_info().vms
+            info["memory"] = f'{rss // (1024 ** 2)}/{vms // (1024 ** 2)}'
             info["cmdline"] = " ".join(process.cmdline())
             create_time = datetime.fromtimestamp(process.create_time())
             info["create_time"] = (f"{create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
                                    f"({timeAgo(create_time)} ago)")
-            ifPrint(f"status     : \033[92m{info['status']}\033[0m", IF=pt)
-            ifPrint(f"memory     : {info['memory']} MB", IF=pt)
-            ifPrint(f"cmdline    : {info['cmdline']}", IF=pt)
-            ifPrint(f"create time: {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
+            ifPrint(f"status      : \033[92m{info['status']}\033[0m", IF=pt)
+            ifPrint(f"mem(rss/vms): {info['memory']} MB", IF=pt)
+            ifPrint(f"cmdline     : {info['cmdline']}", IF=pt)
+            ifPrint(f"create time : {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
                     f"(\033[92m{timeAgo(create_time)}\033[0m ago)", IF=pt)
             if os.path.exists(pause_file) and check_pause:
                 info["status"] = "paused"
@@ -86,7 +87,7 @@ def check_process(pf, check_pause=True, pt=True):
                         IF=pt)
         else:
             info["status"] = "stop"
-            ifPrint(f"status     : \033[91mstop\033[0m", IF=pt)
+            ifPrint(f"status      : \033[91mstop\033[0m", IF=pt)
     except (FileNotFoundError, ValueError) as e:
         err = str(e)
         logger.error(f"没有找到进程ID文件或进程不存在. {e}")
@@ -457,7 +458,7 @@ def run_aut():
             print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
             check_process(Aut.aut_pid_file, check_pause=False)
             sys.exit(0)
-        # Aut.run(upload_db)
+        Aut.run()
     except Exception as e:
         logger.fatal(f"{e}")
         sys.exit(-1)

@@ -54,7 +54,7 @@ def get_total_duration_for_all():
     ''')
     results = cursor.fetchall()
     total_durations = [{"name": row[0], "total_duration": row[1]} for row in results]
-    print(f"get {len(results)}个应用的总使用时长")
+    # print(f"get {len(results)}个应用的总使用时长")
     return total_durations
 
 

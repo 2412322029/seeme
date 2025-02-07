@@ -78,6 +78,55 @@ def save_icon():
         save_exe_icon(o, o.split('\\')[-1], a=48)
 
 
+class ToolTip:
+    def __init__(self, widget, text, delay=500):
+        self.widget = widget
+        self.text = text
+        self.delay = delay  # 提示框显示的延迟时间（毫秒）
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
+
+        self.widget.bind("<Enter>", self.on_enter)
+        self.widget.bind("<Leave>", self.on_leave)
+        self.widget.bind("<Motion>", self.on_motion)
+
+    def on_enter(self, event):
+        # 获取鼠标在屏幕上的位置
+        self.x = self.widget.winfo_pointerx() + 20
+        self.y = self.widget.winfo_pointery() + 20
+        if self.id is None:
+            self.id = self.widget.after(self.delay, self.show_tooltip)
+
+    def on_leave(self, event):
+        if self.id is not None:
+            self.widget.after_cancel(self.id)
+            self.id = None
+        self.hide_tooltip()
+
+    def on_motion(self, event):
+        self.x = event.x + self.widget.winfo_rootx() + 20
+        self.y = event.y + self.widget.winfo_rooty() + 20
+        if self.tipwindow:
+            self.tipwindow.geometry(f"+{self.x}+{self.y}")
+
+    def show_tooltip(self):
+        if self.tipwindow or not self.text:
+            return
+        self.tipwindow = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{self.x}+{self.y}")
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT, relief=tk.SOLID, borderwidth=2,
+                         font=("tahoma", "10", "normal"))
+        label.pack(ipadx=4)
+
+    def hide_tooltip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+
 class mainWindows(ttk.Frame):
     theme_list = ['cosmo', 'flatly', 'litera', 'minty', 'lumen', 'sandstone', 'yeti', 'pulse', 'united', 'morph',
                   'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
@@ -94,6 +143,12 @@ class mainWindows(ttk.Frame):
         self.app = master
         self.app.minsize(width=950, height=800)
         super().__init__(master, padding=5)
+        # 重定向标准输出到队列
+        self.output_queue = queue.Queue()
+        sys.stdout = self.RedirectOutput(self.output_queue)
+        # 定期更新输出框
+        self.update_output_viewer()
+        # sys.stderr = self.RedirectOutput(self.output_queue)# logger使用
         self.output_text = None
         self.key = None
         self.url = None
@@ -106,15 +161,8 @@ class mainWindows(ttk.Frame):
         self.create_logs_viewer()
         self.create_setting()
         self.create_about()
-
         self.update_logs()
         self.cycle_time = 600
-        # 重定向标准输出到队列
-        self.output_queue = queue.Queue()
-        sys.stdout = self.RedirectOutput(self.output_queue)
-        # sys.stderr = self.RedirectOutput(self.output_queue)# logger使用
-        # 定期更新输出框
-        self.update_output_viewer()
 
     def update_output_viewer(self):
         # 定期从队列中获取输出并更新文本框
@@ -206,7 +254,6 @@ class mainWindows(ttk.Frame):
         else:
             _args = ["python", "report.py", "run", "-c", str(self.cycle_time)]
         try:
-            print(" ".join(_args))
             self.process = subprocess.Popen(_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                             text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
                                             bufsize=1, encoding="utf-8")
@@ -245,12 +292,19 @@ class mainWindows(ttk.Frame):
             pc.wait()
 
     def update_process_info_loop(self):
-        self.update_process_info(pid_file, self.tree)
-        self.update_process_info(Aut.aut_pid_file, self.tree2, check_pause=False)
-        self.master.after(2000, self.update_process_info_loop)
+        try:
+            self.update_process_info(pid_file, self.tree)
+            self.update_process_info(Aut.aut_pid_file, self.tree2, check_pause=False)
+            self.master.after(2000, self.update_process_info_loop)
+        except Exception as e:
+            messagebox.showerror("err", str(e))
 
     def update_process_info(self, pf, tr, check_pause=True):
         err, info = check_process(pf, pt=False, check_pause=check_pause)
+        if err:
+            tr.insert("", "end", values=("Error", f"{err}"))
+            tr.insert("", "end", values=("Stop", f"stop update process info"))
+            raise Exception(f'更新进程状态信息出错 {err}')
         tr.tag_configure("running", foreground="green")
         tr.tag_configure("stop", foreground="red")
         tr.tag_configure("paused", foreground="yellow")
@@ -265,14 +319,11 @@ class mainWindows(ttk.Frame):
                 self.report_running = False
             else:
                 self.aut_running = False
-        if err:
-            tr.insert("", "end", values=("Error", f"Error - {err}"))
-            return
         for i in tr.get_children():
             tr.delete(i)
         tr.insert("", "end", values=("进程ID", info.get("pid", "N/A")))
         tr.insert("", "end", values=("状态", status), tags=(status,))
-        tr.insert("", "end", values=("工作集内存", f"{info.get('memory', 0)} MB"))
+        tr.insert("", "end", values=("(常驻/虚拟)内存", f"{info.get('memory', 0)} MB"))
         tr.insert("", "end", values=("创建时间", info.get("create_time", "N/A")))
         tr.insert("", "end", values=("命令行", info.get("cmdline", "N/A")))
         if check_pause:
@@ -540,13 +591,17 @@ class mainWindows(ttk.Frame):
         row = ttk.Frame()
         row.pack(fill="both", expand=True)
         self.notebook.add(row, text="应用使用统计", state="normal")
-        # 添加刷新按钮
         usage_ctrl_frame = ttk.Frame(row)
         usage_ctrl_frame.pack(fill=BOTH, padx=10, pady=5)
         refresh_button = ttk.Button(usage_ctrl_frame, text="刷新", command=self.load_usage_data)
         refresh_button.pack(side="left", padx=5, pady=5)
+
         save_icon_button = ttk.Button(usage_ctrl_frame, text="save icon", command=save_icon)
         save_icon_button.pack(side="left", padx=5, pady=5)
+        self.canvas_at = ttk.Label(usage_ctrl_frame)
+        self.canvas_at.pack(side="left", padx=5)
+        ToolTip(self.canvas_at, "下面数据更新的时间")
+
         self.canvas = tk.Canvas(row)
         scrollbar = ttk.Scrollbar(row, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas)
@@ -562,9 +617,9 @@ class mainWindows(ttk.Frame):
             elif event.num == 4 or event.delta > 0:  # 向上滚动
                 self.canvas.yview_scroll(-1, "units")
 
-        self.canvas.bind("<MouseWheel>", on_mousewheel)
-        self.canvas.bind("<Button-4>", on_mousewheel)
-        self.canvas.bind("<Button-5>", on_mousewheel)
+        self.canvas.bind_all("<MouseWheel>", on_mousewheel)
+        self.canvas.bind_all("<Button-4>", on_mousewheel)
+        self.canvas.bind_all("<Button-5>", on_mousewheel)
         self.app_frames = []
         self.load_usage_data()
 
@@ -576,6 +631,8 @@ class mainWindows(ttk.Frame):
         self.app_frames.clear()
         for app in usage_data:
             self.create_app_frame(app, max_duration)
+        self.canvas_at.config(text=f"更新于 {datetime.now().strftime("%H:%M:%S")}")
+        # self.master.after(2000, self.load_usage_data)  # auto 2秒卡一次 no
 
     def create_app_frame(self, app, max_duration):
         app_name = app["name"].split('\\')[-1]
@@ -593,8 +650,10 @@ class mainWindows(ttk.Frame):
         else:
             icon_label = ttk.Label(app_frame, text="", width=3)
         icon_label.pack(side="left", padx=5)
-        name_label = ttk.Label(app_frame, text=app_name, width=30, anchor="w")
+        name_label = ttk.Label(app_frame, text=app_name, width=30, anchor="w", cursor="hand2")
         name_label.pack(side="left", padx=5)
+        name_label.bind("<Button-1>", lambda event: open_folder(path=os.path.dirname(app["name"])))
+        ToolTip(name_label, f'打开目录 {os.path.dirname(app["name"])}')
         progress = ttk.Progressbar(app_frame, orient="horizontal", length=200, mode="determinate")
         progress["value"] = (total_duration / max_duration) * 100
         progress.pack(side="left", padx=5)

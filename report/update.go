@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
 func main() {
@@ -22,6 +23,7 @@ func main() {
 	pid, err := strconv.Atoi(pidStr)
 	if err != nil {
 		fmt.Printf("无效的PID：%s\n", pidStr)
+        time.Sleep(2 * time.Second) // 等待2秒
 		os.Exit(1)
 	}
 
@@ -32,11 +34,12 @@ func main() {
 	} else {
 		if err := process.Kill(); err != nil {
 			fmt.Printf("终止PID为%d的进程失败：%v\n", pid, err)
+            time.Sleep(2 * time.Second) // 等待2秒
 			os.Exit(1)
 		}
 		fmt.Printf("PID为%d的进程已被终止。\n", pid)
 	}
-
+    time.Sleep(2 * time.Second) // 等待2秒
 	err = copyDir(sourceDir, targetDir)
 	if err != nil {
 		fmt.Printf("从%s复制文件到%s失败：%v\n", sourceDir, targetDir, err)
