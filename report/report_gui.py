@@ -7,6 +7,7 @@ import threading
 import tkinter as tk
 import traceback
 import webbrowser
+from datetime import datetime, timedelta
 from tkinter import messagebox
 
 import ttkbootstrap as ttk
@@ -82,6 +83,8 @@ class mainWindows(ttk.Frame):
                   'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
 
     def __init__(self, master: Window):
+        self.download_progress = None
+        self.download_text = None
         self.is_download = False
         self.info_queue = None
         self.update_info = None
@@ -199,7 +202,6 @@ class mainWindows(ttk.Frame):
             messagebox.showerror("错误", f"{self.key=},{self.url=}")
             return
         if os.path.exists("report.exe"):
-            # TODO: 600可更改 去掉, "-k", self.key, "-u", self.url
             _args = ["report.exe", "run", "-c", str(self.cycle_time)]
         else:
             _args = ["python", "report.py", "run", "-c", str(self.cycle_time)]
@@ -366,11 +368,6 @@ class mainWindows(ttk.Frame):
                                         bootstyle="danger-outline")
         self.remove_button.grid(row=6, column=1, padx=5, pady=5, sticky="e")
 
-        button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
-        button1.grid(row=7, column=0, pady=15, padx=5, sticky="w")
-        button1 = ttk.Button(row, text="打开数据文件夹", command=lambda: open_folder(path=Aut.APPDATA))
-        button1.grid(row=7, column=0, pady=15, padx=5, sticky="e")
-
         def getsize(f):
             try:
                 kb = os.path.getsize(f) // 1024
@@ -384,18 +381,36 @@ class mainWindows(ttk.Frame):
         def open_folder_and_select_file(event):
             open_folder(path=Aut.sqlite_file, select=True)
 
-        ttk.Label(row, text="数据库文件：").grid(row=7, column=1, padx=5, pady=5, sticky="w")
+        ttk.Label(row, text="数据库文件：").grid(row=7, column=0, padx=5, pady=5, sticky="w")
         label3 = ttk.Label(row, text=f"{Aut.sqlite_file.split("\\")[-1]} {getsize(Aut.sqlite_file)}",
                            foreground="#2AADFF", cursor="hand2")
-        label3.grid(row=7, column=1, columnspan=2, padx=5, pady=5, sticky="e")
+        label3.grid(row=7, column=1, columnspan=2, padx=5, pady=5, sticky="we")
         label3.bind("<Button-1>", open_folder_and_select_file)
 
+        ttk.Label(row, text="更新源:").grid(row=8, column=0, padx=5, pady=5, sticky="w")
+        self.update_source_var = ttk.StringVar(value="gitee")
+        self.update_source_var.trace("w", self.on_update_source_changed)
+        update_sourceComb = ttk.Combobox(row, textvariable=self.update_source_var,
+                                         values=["gitee", "github"], state="readonly")
+        update_sourceComb.grid(row=8, column=1, padx=5, pady=5, sticky="ew")
+        ttk.Label(row, text="自动检查更新频率:").grid(row=9, column=0, padx=5, pady=5, sticky="w")
+        self.check_frequency_var = ttk.StringVar(value="每天")
+        self.check_frequency_var.trace("w", self.on_check_frequency_changed)
+        (ttk.Combobox(row, textvariable=self.check_frequency_var, values=["每天", "每周", "从不"], state="readonly")
+         .grid(row=9, column=1, padx=5, pady=5, sticky="ew"))
+
+        button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
+        button1.grid(row=10, column=0, pady=15, padx=5, sticky="w")
+        button2 = ttk.Button(row, text="打开数据文件夹", command=lambda: open_folder(path=Aut.APPDATA))
+        button2.grid(row=10, column=0, pady=15, padx=5, sticky="e")
+        button3 = ttk.Button(row, text="测试更新服务连接", command=Aut.test_conn)
+        button3.grid(row=10, column=1, pady=15, padx=5, sticky="w")
+
         reload_button = ttk.Button(row, text="重载配置", command=self.load_settings, bootstyle="warning-outline")
-        reload_button.grid(row=8, column=0, pady=15, padx=5, sticky="w")
+        reload_button.grid(row=11, column=0, pady=15, padx=5, sticky="w")
         # 保存按钮
         save_button = ttk.Button(row, text="保存", command=self.save_settings, bootstyle="success-outline")
-        save_button.grid(row=8, column=1, pady=15, padx=5, sticky="e")
-
+        save_button.grid(row=11, column=1, pady=15, padx=5, sticky="e")
         # 加载设置
         self.load_settings()
 
@@ -426,6 +441,14 @@ class mainWindows(ttk.Frame):
         selected_theme = self.theme_var.get()
         self.app.style.theme_use(themename=selected_theme)
         print(f"主题已切换为: {selected_theme}")
+
+    def on_update_source_changed(self, *args):
+        self.selected_source = self.update_source_var.get()
+        print(f"更新源已切换为: {self.selected_source}")
+
+    def on_check_frequency_changed(self, *args):
+        self.check_frequency = self.check_frequency_var.get()
+        print(f"检查更新频率已切换为: {self.check_frequency}")
 
     def add_exclude_process(self):
         inp = self.add_entry.get().split(",")
@@ -462,6 +485,8 @@ class mainWindows(ttk.Frame):
         Aut.cfg.set("DEFAULT", "height", str(self.notebook.winfo_height()))
         Aut.cfg.set("DEFAULT", "width", str(self.notebook.winfo_width()))
         Aut.cfg.set("DEFAULT", "cycle_time", str(self.cycle_time))
+        Aut.cfg.set("DEFAULT", "update_source", str(self.selected_source))
+        Aut.cfg.set("DEFAULT", "check_frequency", str(self.check_frequency))
         e, m = Aut.setting_config(Aut.cfg)
         if e:
             messagebox.showinfo("info", f"{m}")
@@ -471,6 +496,8 @@ class mainWindows(ttk.Frame):
     @catch_errors
     def load_settings(self):
         self.theme_var.set(Aut.cfg.get("DEFAULT", "theme", fallback="cyborg"))
+        self.update_source_var.set(Aut.cfg.get("DEFAULT", "update_source", fallback="gitee"))
+        self.check_frequency_var.set(Aut.cfg.get("DEFAULT", "check_frequency", fallback="每天"))
         height = int(Aut.cfg.get("DEFAULT", "height", fallback=800))
         width = int(Aut.cfg.get("DEFAULT", "width", fallback=900))
         self.cycle_time = int(Aut.cfg.get("DEFAULT", "cycle_time", fallback=600))
@@ -486,6 +513,28 @@ class mainWindows(ttk.Frame):
         self.exclude_list.delete(0, END)
         for process in Exclude_Process:
             self.exclude_list.insert("end", process)
+        self.after(1000, self.auto_check)
+
+    def auto_check(self):
+        # 检查更新
+        last_update_time = Aut.cfg.get("DEFAULT", "last_update_time", fallback="2000-01-01 10:01:01")
+        last_update_time_o = datetime.strptime(last_update_time, "%Y-%m-%d %H:%M:%S")
+        now = datetime.now()
+        check_frequency = self.check_frequency_var.get()
+        if check_frequency == "每天":
+            t_delta = timedelta(days=1)
+        elif check_frequency == "每周":
+            t_delta = timedelta(weeks=1)
+        elif check_frequency == "从不":
+            t_delta = timedelta(days=365 * 100)  # 相当于 "从不"
+        else:
+            self.check_frequency_var.set("每周")
+            t_delta = timedelta(weeks=1)
+        if now - last_update_time_o >= t_delta:
+            print(f"需要更新  上传更新时间:{last_update_time}")
+            Aut.get_update_info(self.update_source_var.get(), self)
+        else:
+            print(f"不需要更新  上次更新时间: {last_update_time}")
 
     def create_usage(self):
         row = ttk.Frame()
@@ -552,77 +601,46 @@ class mainWindows(ttk.Frame):
         duration_label = ttk.Label(app_frame, text=f"{Aut.seconds2hms(total_duration)}", width=10, anchor="e")
         duration_label.pack(side="left", padx=5)
 
-    def remove_temp(self, progress_text=None):
-        # 删除tmp目录下所有内容
-        for root, dirs, files in os.walk(Aut.temp_dir, topdown=False):
-            if files:
-                if messagebox.askquestion("删除临时文件夹下所有内容",
-                                          f"临时文件夹存在上次下载的文件,可能导致下载失败.\n"
-                                          f"删除以下文件\n{'\n'.join(files)}") == "yes":
-                    for name in files:
-                        file_path = os.path.join(root, name)
-                        if progress_text:
-                            progress_text.config(text=f"remove {file_path}")
-                        os.remove(file_path)  # 删除文件
-                        print(f"remove {file_path}")
-                    for name in dirs:
-                        dir_path = os.path.join(root, name)
-                        os.rmdir(dir_path)  # 删除子目录
-            else:
-                print("temp_dir no file to remove.")
-
     def show_and_download(self, event):
         if self.is_download:
             messagebox.showinfo("info", "进行中")
             return
         if not self.update_info:
             return
-
+        zip_name, zip_url, sum_name, sum_url = None, None, None, None
         self.is_download = True
-        # self.info_label.config(text=f"")
-        download_text = ttk.Label(self.about_row, text="开始下载更新文件...")
-        download_text.grid(row=3, column=0, columnspan=10, padx=5, pady=5, sticky="w")
-        progress = ttk.Progressbar(self.about_row, orient="horizontal", length=400, mode="determinate")
-        progress.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
-        zip_name = self.update_info["assets"][0]["name"]
-        zip_url = self.update_info["assets"][0]["url"]
-        sum_name = self.update_info["assets"][1]["name"]
-        sum_url = self.update_info["assets"][1]["url"]
-        self.remove_temp(download_text)
-        now_name = ""
-        now_type = "下载"
+        for asset in self.update_info["assets"]:  # 暂时这样
+            if asset["name"].endswith(f".zip") and "dist" in asset["name"]:
+                zip_name = asset["name"]
+                zip_url = asset["url"]
+        for asset in self.update_info["assets"]:
+            if asset["name"].endswith(".sha256.txt") and "dist" in asset["name"]:
+                sum_name = asset["name"]
+                sum_url = asset["url"]
+        print(f"{zip_name=}\n {sum_name=}")
+        if not self.download_text:
+            self.download_text = ttk.Label(self.about_row, text="开始下载更新文件...")
+            self.download_text.grid(row=3, column=0, columnspan=10, padx=5, pady=5, sticky="w")
 
+        else:
+            self.download_text.config(text="")
+        if not self.download_progress:
+            self.download_progress = ttk.Progressbar(self.about_row,
+                                                     orient="horizontal", length=400, mode="determinate")
+            self.download_progress.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
+
+        # step 3
         def do_check_file():
-            nonlocal now_type
-            now_type = "校验完整性"
             zip_file = os.path.join(Aut.temp_dir, zip_name)
             sum_file = os.path.join(Aut.temp_dir, sum_name)
-            ok, msg = Aut.check_file_integrity(str(zip_file), sum_file,
-                                               progress_callback=update_progress, t=download_text)
-            # TODO 线程中，拿不到返回值
-            download_text.config(text=f"{msg}")
-            self.is_download = False  # 结束
+            Aut.check_file_integrity(str(zip_file), sum_file, s=self)
 
+        # step 2
         def download_sum():
-            nonlocal now_name
-            now_name = sum_name
-            Aut.download_file(sum_name, sum_url, Aut.temp_dir,
-                              progress_callback=update_progress, when_ok=do_check_file)
+            Aut.download_file(sum_name, sum_url, Aut.temp_dir, s=self, do_next=do_check_file)
 
-        def b2mb(b):
-            return f"{b / (1024 * 1024):.2f}"
-
-        def update_progress(current_size, total_size):
-            progress["value"] = (current_size / total_size) * 100
-            bf = f"{(current_size / total_size) * 100:.1f}%"
-            download_text.config(
-                text=f"{now_type}{now_name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
-            self.about_row.update_idletasks()
-
-        now_name = zip_name
-        Aut.download_file(zip_name, zip_url, Aut.temp_dir,
-                          progress_callback=update_progress, when_ok=download_sum)
-        # do_check_file()
+        # step 1
+        Aut.download_file(zip_name, zip_url, Aut.temp_dir, s=self, do_next=download_sum)
 
     def create_about(self):
         def open_url(event):
@@ -643,20 +661,8 @@ class mainWindows(ttk.Frame):
         self.info_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
         self.info_label.bind("<Button-1>", self.show_and_download)
 
-        def show_info():
-            info = self.info_queue.get()
-            if info:
-                self.update_info = info
-                if Aut.__version__ == info["version"]:
-                    messagebox.showinfo(f"info", f"{Aut.__version__}是最新版。")
-                elif Aut.__version__ < info["version"]:
-                    messagebox.askquestion(f"有新版本!", f"{Aut.__version__} ->"
-                                                         f" {info["version"]}\n{info["body"]}")
-                    self.info_label.config(text=f"{info["version"]} is new , Click to download", state=NORMAL)
-
         def get_update(event):
-            self.info_queue, _ = Aut.run_in_thread(Aut.get_update_info)()
-            Aut.run_in_thread(show_info)()
+            Aut.get_update_info(self.selected_source, self)
 
         label3 = ttk.Label(self.about_row, text="检查更新", foreground="#2AADFF", cursor="hand2")
         label3.grid(row=2, column=0, padx=5, pady=5, sticky="e")

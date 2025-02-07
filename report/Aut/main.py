@@ -9,10 +9,9 @@ import psutil
 import win32gui
 import win32process
 
-from .logger import logger, APPDATA
+from .logger import logger
+from .process_mgr import sqlite_file, aut_pid_file
 
-sqlite_file = os.path.join(APPDATA, "app_usage.db")
-aut_pid_file = os.path.join(APPDATA, 'aut.pid')  # 保存进程pid
 conn = sqlite3.connect(sqlite_file)
 cursor = conn.cursor()
 

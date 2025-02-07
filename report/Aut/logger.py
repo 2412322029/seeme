@@ -31,3 +31,4 @@ def setup_logger(logger_name="main", log_level=logging.INFO):
 
 logger = setup_logger()
 # print(f"{APPDATA=}")
+print(sys.argv)

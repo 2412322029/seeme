@@ -12,6 +12,7 @@ CONFIG = {
     "gui_filename": "report.exe",
     "cli_filename": "report_cli.exe",
     "icon_source": "icon.ico",
+    "update_source": "update.exe",
     "upx_path": "upx",
     "7z_path": "7z",
     "version_file": "Aut/logger.py"
@@ -148,6 +149,14 @@ def build_gui_app(config: BuildConfig) -> None:
             print_color("警告：未找到图标文件，跳过复制", "93")
     except IOError as e:
         print_color(f"复制图标文件失败: {str(e)}", "91")
+    try:
+        if os.path.exists(CONFIG["update_source"]):
+            shutil.copy(CONFIG["update_source"], os.path.join(dest_dir, "update.exe"))
+            print_color("update.exe文件已复制到目标目录", "92")
+        else:
+            print_color("警告：未找到update.exe，跳过复制", "93")
+    except IOError as e:
+        print_color(f"复制update.exe文件失败: {str(e)}", "91")
 
 
 def build_cli_app(config: BuildConfig) -> None:
