@@ -7,6 +7,7 @@ import threading
 import tkinter as tk
 import traceback
 import webbrowser
+from concurrent.futures import Future
 from datetime import datetime, timedelta
 from tkinter import messagebox
 
@@ -15,9 +16,17 @@ from PIL import ImageTk, Image
 from ttkbootstrap import Window
 from ttkbootstrap.constants import *
 
-import Aut
-from report import (check_process, pid_file, is_process_running, read_pid, kill_process, resume_process, pause_process,
-                    Exclude_Process, icon_dir, save_exe_icon)
+try:
+    import Aut
+    from report import (check_process, pid_file, is_process_running, read_pid, kill_process, resume_process,
+                        pause_process,
+                        Exclude_Process, icon_dir, save_exe_icon)
+    from Aut import ToolTip
+except Exception as e:
+    messagebox.showerror('err', str(e))
+    sys.exit(-1)
+
+Press_key = set()
 
 
 def catch_errors(func):
@@ -61,7 +70,12 @@ def open_folder(path, select=False):
             if select:
                 os.system(f'explorer /select,"{path}"')
             else:
-                os.startfile(path)
+                if os.path.isfile(path):
+                    os.startfile(os.path.dirname(path))
+                elif os.path.isdir(path):
+                    os.startfile(path)
+                else:
+                    raise Exception("unknown path")
         elif os.name == 'posix':  # macOS 或 Linux
             if sys.platform == 'darwin':  # macOS
                 subprocess.run(['open', path], check=True)
@@ -78,64 +92,15 @@ def save_icon():
         save_exe_icon(o, o.split('\\')[-1], a=48)
 
 
-class ToolTip:
-    def __init__(self, widget, text, delay=500):
-        self.widget = widget
-        self.text = text
-        self.delay = delay  # 提示框显示的延迟时间（毫秒）
-        self.tipwindow = None
-        self.id = None
-        self.x = self.y = 0
-
-        self.widget.bind("<Enter>", self.on_enter)
-        self.widget.bind("<Leave>", self.on_leave)
-        self.widget.bind("<Motion>", self.on_motion)
-
-    def on_enter(self, event):
-        # 获取鼠标在屏幕上的位置
-        self.x = self.widget.winfo_pointerx() + 20
-        self.y = self.widget.winfo_pointery() + 20
-        if self.id is None:
-            self.id = self.widget.after(self.delay, self.show_tooltip)
-
-    def on_leave(self, event):
-        if self.id is not None:
-            self.widget.after_cancel(self.id)
-            self.id = None
-        self.hide_tooltip()
-
-    def on_motion(self, event):
-        self.x = event.x + self.widget.winfo_rootx() + 20
-        self.y = event.y + self.widget.winfo_rooty() + 20
-        if self.tipwindow:
-            self.tipwindow.geometry(f"+{self.x}+{self.y}")
-
-    def show_tooltip(self):
-        if self.tipwindow or not self.text:
-            return
-        self.tipwindow = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry(f"+{self.x}+{self.y}")
-        label = tk.Label(tw, text=self.text, justify=tk.LEFT, relief=tk.SOLID, borderwidth=2,
-                         font=("tahoma", "10", "normal"))
-        label.pack(ipadx=4)
-
-    def hide_tooltip(self):
-        tw = self.tipwindow
-        self.tipwindow = None
-        if tw:
-            tw.destroy()
-
-
 class mainWindows(ttk.Frame):
     theme_list = ['cosmo', 'flatly', 'litera', 'minty', 'lumen', 'sandstone', 'yeti', 'pulse', 'united', 'morph',
                   'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
 
     def __init__(self, master: Window):
+        self.app_frames = []
         self.download_progress = None
         self.download_text = None
         self.is_download = False
-        self.info_queue = None
         self.update_info = None
         self.report_running = False
         self.aut_running = False
@@ -153,9 +118,8 @@ class mainWindows(ttk.Frame):
         self.key = None
         self.url = None
         self.pack(fill=BOTH, expand=True)
-        self.notebook = ttk.Notebook(self, style="info", height=800, width=900)
-        self.notebook.pack(fill=BOTH)
-
+        self.notebook = ttk.Notebook(self, style="info")
+        self.notebook.pack(fill=BOTH, expand=True)
         self.create_usage()
         self.create_process_checker()
         self.create_logs_viewer()
@@ -600,8 +564,6 @@ class mainWindows(ttk.Frame):
         save_icon_button.pack(side="left", padx=5, pady=5)
         self.canvas_at = ttk.Label(usage_ctrl_frame)
         self.canvas_at.pack(side="left", padx=5)
-        ToolTip(self.canvas_at, "下面数据更新的时间")
-
         self.canvas = tk.Canvas(row)
         scrollbar = ttk.Scrollbar(row, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas)
@@ -620,21 +582,29 @@ class mainWindows(ttk.Frame):
         self.canvas.bind_all("<MouseWheel>", on_mousewheel)
         self.canvas.bind_all("<Button-4>", on_mousewheel)
         self.canvas.bind_all("<Button-5>", on_mousewheel)
-        self.app_frames = []
         self.load_usage_data()
 
     def load_usage_data(self):
-        usage_data = Aut.get_total_duration_for_all()
-        max_duration = max(row["total_duration"] for row in usage_data) if usage_data else 1
-        for frame in self.app_frames:
-            frame.destroy()
-        self.app_frames.clear()
-        for app in usage_data:
-            self.create_app_frame(app, max_duration)
-        self.canvas_at.config(text=f"更新于 {datetime.now().strftime("%H:%M:%S")}")
-        # self.master.after(2000, self.load_usage_data)  # auto 2秒卡一次 no
+        f: Future = Aut.get_total_duration_for_all()
+        self.canvas_at.config(text=f"加载中")
 
-    def create_app_frame(self, app, max_duration):
+        def get_show(future):
+            try:
+                for frame in self.app_frames:
+                    frame.destroy()
+                self.app_frames.clear()
+                usage_data = future.result()
+                max_duration = max(row["total_duration"] for row in usage_data) if usage_data else 1
+                for app in usage_data:
+                    self.create_app_frame(app, max_duration)
+                self.canvas_at.config(text=f"更新于 {datetime.now().strftime("%H:%M:%S")}")
+            except Exception as e:
+                print(e)
+                self.canvas_at.config(text=f"Error:{str(e)}")
+
+        f.add_done_callback(get_show)
+
+    def create_app_frame(self, app, max_duration=1):
         app_name = app["name"].split('\\')[-1]
         total_duration = app["total_duration"]
         app_frame = ttk.Frame(self.scrollable_frame)
@@ -652,8 +622,38 @@ class mainWindows(ttk.Frame):
         icon_label.pack(side="left", padx=5)
         name_label = ttk.Label(app_frame, text=app_name, width=30, anchor="w", cursor="hand2")
         name_label.pack(side="left", padx=5)
-        name_label.bind("<Button-1>", lambda event: open_folder(path=os.path.dirname(app["name"])))
-        ToolTip(name_label, f'打开目录 {os.path.dirname(app["name"])}')
+        name_label.bind("<Button-1>", lambda event: open_folder(app["name"], select=True))
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))  # 更新滚动区域。
+        show_text = f"打开目录: \n{os.path.dirname(app["name"])}"
+        after_id = ""
+
+        def at_show(lab):
+            f: Future = Aut.get_hourly_duration_for_name(app['name'])
+            data = None
+
+            def get_show(future):
+                nonlocal after_id, data
+                if 'Control_L' in Press_key:
+                    try:
+                        if not data:
+                            print(f"query {os.path.basename(app['name'])} hourly duration")
+                            data = future.result()
+                        lab.winfo_exists() and lab.config(text=f"{show_text}\n{data}")
+                    except Exception as e:
+                        print(e)
+                        lab.winfo_exists() and lab.config(text=f"{show_text}\n查询错误: {e}")
+                else:
+                    lab.winfo_exists() and lab.config(text=f"{show_text}\n按住ctrl每小时的信息")
+
+                after_id = self.scrollable_frame.after(100, lambda: get_show(f))
+
+            f.add_done_callback(get_show)
+
+        def stop_after():
+            if after_id:
+                self.scrollable_frame.after_cancel(after_id)
+
+        ToolTip(name_label, show_text, delay=100, at_show_func=at_show, at_leave=stop_after)
         progress = ttk.Progressbar(app_frame, orient="horizontal", length=200, mode="determinate")
         progress["value"] = (total_duration / max_duration) * 100
         progress.pack(side="left", padx=5)
@@ -661,6 +661,9 @@ class mainWindows(ttk.Frame):
         duration_label.pack(side="left", padx=5)
 
     def show_and_download(self, event):
+        if not self.update_info or Aut.__version__ >= self.update_info["version"]:
+            messagebox.showinfo("info", "无需下载")
+            return
         if self.is_download:
             messagebox.showinfo("info", "进行中")
             return
@@ -716,7 +719,7 @@ class mainWindows(ttk.Frame):
         ttk.Label(self.about_row, text=f"version:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         ttk.Label(self.about_row, text=f"{Aut.__version__}").grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
-        self.info_label = ttk.Label(self.about_row, text="当前是最新版", foreground="#2AADFF", cursor="hand2")
+        self.info_label = ttk.Label(self.about_row, text="当前是最新版", foreground="#2AADFF")
         self.info_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
         self.info_label.bind("<Button-1>", self.show_and_download)
 
@@ -727,15 +730,29 @@ class mainWindows(ttk.Frame):
         label3.grid(row=2, column=0, padx=5, pady=5, sticky="e")
         label3.bind("<Button-1>", get_update)
 
+        self.about_row.columnconfigure(0, weight=0)
+        self.about_row.columnconfigure(1, weight=0)
+        self.about_row.columnconfigure(2, weight=1)
+
 
 def main():
-    app = ttk.Window("Report", "cyborg")
     try:
+        app = ttk.Window("Report", "cyborg")
+        app.geometry("950x1000")
         app.iconbitmap("icon.ico")
+        mainWindows(app)
+
+        def on_key_press(event):
+            Press_key.add(event.keysym)
+
+        def on_key_release(event):
+            Press_key.clear()
+
+        app.bind("<KeyPress>", on_key_press)
+        app.bind("<KeyRelease>", on_key_release)
+        app.mainloop()
     except Exception as e:
-        print(f"Error setting icon: {e}")
-    mainWindows(app)
-    app.mainloop()
+        messagebox.showerror("Error", str(e))
 
 
 if __name__ == '__main__':

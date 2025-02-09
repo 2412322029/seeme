@@ -1,10 +1,9 @@
 import hashlib
 import os
-import queue
 import sys
-import threading
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import wraps
 from tkinter import messagebox
@@ -17,20 +16,21 @@ from .process_mgr import kill_process, pid_file, aut_pid_file, read_pid, is_proc
 
 temp_dir = os.path.join(APPDATA, 'temp')
 
+# 创建一个线程池
+executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="ThreadPool")
 
-def run_in_thread(func):
+
+def run_in_thread(func, callback=None):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        result_queue = queue.Queue()
-
         def thread_target():
-            result = func(*args, **kwargs)
-            result_queue.put(result)
+            # print(f"Func:{func.__name__}({args=}, {kwargs=}) run in {threading.current_thread().__str__()}")
+            return func(*args, **kwargs)
 
-        thread = threading.Thread(target=thread_target)
-        thread.daemon = True  # 设置为守护线程
-        thread.start()
-        return result_queue, thread
+        future = executor.submit(thread_target)
+        if callback:
+            future.add_done_callback(callback)
+        return future
 
     return wrapper
 
@@ -84,14 +84,18 @@ def get_update_info(update_source, s):
             }
             cfg.set("DEFAULT", "last_update_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             setting_config(cfg)
-            if s:
+            if not s:
+                return info
+            else:
                 s.update_info = info
-                if __version__ == info["version"]:
-                    messagebox.showinfo(f"info", f"{__version__}是最新版。")
+                if __version__ >= info["version"]:
+                    messagebox.showinfo(f"info", f"{__version__}是最新版。{__version__} ->"
+                                                 f" {info["version"]}\n{info["body"]}")
                 elif __version__ < info["version"]:
                     messagebox.askquestion(f"有新版本!", f"{__version__} ->"
                                                          f" {info["version"]}\n{info["body"]}")
-                    s.info_label.config(text=f"{info["version"]} is new , Click to download", state="normal")
+                    s.info_label.config(text=f"{info["version"]} is new ,"
+                                             f" Click to download", state="normal", cursor="hand2")
         else:
             messagebox.showerror("错误", f"检查更新失败，\n"
                                          f"{url=}\n状态码: {response.status_code}\n{response.text}")

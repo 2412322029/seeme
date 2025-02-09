@@ -1,6 +1,7 @@
 import os
 import sqlite3
 
+from .chack_update import run_in_thread
 from .logger import APPDATA
 
 sqlite_file = os.path.join(APPDATA, "app_usage.db")
@@ -44,8 +45,11 @@ def get_total_duration_for_name(name):
     return {"name": name, "total_duration": total_duration}
 
 
+@run_in_thread
 def get_total_duration_for_all():
     """获取所有应用的总使用时长"""
+    conn = sqlite3.connect(sqlite_file)
+    cursor = conn.cursor()
     cursor.execute('''
     SELECT name, SUM(duration) AS total_duration
     FROM app_usage
@@ -55,6 +59,7 @@ def get_total_duration_for_all():
     results = cursor.fetchall()
     total_durations = [{"name": row[0], "total_duration": row[1]} for row in results]
     # print(f"get {len(results)}个应用的总使用时长")
+    conn.close()
     return total_durations
 
 
@@ -87,7 +92,6 @@ def seconds2hms(total_duration):
     return f"{seconds:.0f}秒"
 
 
-
 def print_analysis():
     """以表格形式打印应用的总使用时长"""
     print(f"{'应用名称':<28} {'总使用时长':<15} {'路径'}")
@@ -98,18 +102,26 @@ def print_analysis():
         print(f"{name:<30} {duration:<20} {item['name']}")
 
 
+@run_in_thread
 def get_hourly_duration_for_name(name):
     """获取特定应用的每小时使用时长"""
+    conn = sqlite3.connect(sqlite_file)
+    cursor = conn.cursor()
     cursor.execute('''
-    SELECT hourly_start_time, SUM(duration) AS total_duration
+    SELECT hourly_start_time, MAX(end_time), SUM(duration) AS total_duration
     FROM app_usage
     WHERE name = ?
     GROUP BY hourly_start_time
     ORDER BY hourly_start_time
     ''', (name,))
     rows = cursor.fetchall()
-    hourly_durations = [{"hourly_start_time": row[0], "total_duration": row[1]} for row in rows]
-    return {"name": name, "hourly_durations": hourly_durations}
+    s = ""
+    for row in rows:
+        s += f"{row[0]} ~ {row[1]} -> {seconds2hms(row[2])}\n"
+    conn.close()
+    return s
+    # hourly_durations = [{"hourly_start_time": row[0], "total_duration": row[1]} for row in rows]
+    # return json.dumps(hourly_durations, indent=4)
 
 
 def get_hourly_duration_for_all():

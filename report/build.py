@@ -127,69 +127,62 @@ def get_version_info() -> Tuple[bool, str]:
 
 def build_gui_app(config: BuildConfig) -> None:
     print_header("开始构建GUI应用程序")
-    command = (
+    command = (  # 每段末尾都有一个空格分割
         f"nuitka --standalone --follow-imports --lto=yes "
         f"--enable-plugin=tk-inter --windows-icon-from-ico={CONFIG['icon_source']} "
         f"--output-filename={CONFIG['gui_filename']} --output-dir={CONFIG['output_dir']} "
         f"--no-deployment-flag=self-execution --windows-console-mode=disable "
-        f"--product-name=report --file-version={config.new_version}.0 report_gui.py"
+        f'''--include-data-files="icon.ico=icon.ico" '''
+        f"--product-name=report --file-version={config.new_version} "  # no  --onefile 启动时解压缩,变慢
+        f"report_gui.py"
     )
     execute_command(command)
 
-    # 处理图标文件
-    icon_src = CONFIG["icon_source"]
     dest_dir = os.path.join(CONFIG["output_dir"], CONFIG["gui_dir"])
-    icon_dest = os.path.join(dest_dir, "icon.ico")
-
-    try:
-        if os.path.exists(icon_src):
-            shutil.copy(icon_src, icon_dest)
-            print_color("图标文件已复制到目标目录", "92")
-        else:
-            print_color("警告：未找到图标文件，跳过复制", "93")
-    except IOError as e:
-        print_color(f"复制图标文件失败: {str(e)}", "91")
     try:
         if os.path.exists(CONFIG["update_source"]):
             shutil.copy(CONFIG["update_source"], os.path.join(dest_dir, "update.exe"))
             print_color("update.exe文件已复制到目标目录", "92")
         else:
-            print_color("警告：未找到update.exe，跳过复制", "93")
+            print_color("警告：未找到update.exe，使用go编译", "92")
+            check_tool('go')
+            execute_command('go build -o update.exe update.go')
+            shutil.copy(CONFIG["update_source"], os.path.join(dest_dir, "update.exe"))
     except IOError as e:
         print_color(f"复制update.exe文件失败: {str(e)}", "91")
 
 
-def build_cli_app(config: BuildConfig) -> None:
-    print_header("开始构建CLI应用程序")
-    command = (
-        f"nuitka --standalone --follow-imports --lto=yes "
-        f"--product-name=report_cli --file-version={config.new_version}.0 "
-        f"--output-filename={CONFIG['cli_filename']} --output-dir={CONFIG['output_dir']} report.py"
-    )
-    execute_command(command)
+# def build_cli_app(config: BuildConfig) -> None:
+#     print_header("开始构建CLI应用程序")
+#     command = (
+#         f"nuitka --standalone --follow-imports --lto=yes "
+#         f"--product-name=report_cli --file-version={config.new_version}.0 "
+#         f"--output-filename={CONFIG['cli_filename']} --output-dir={CONFIG['output_dir']} report.py"
+#     )
+#     execute_command(command)
 
 
-def process_upx() -> None:
-    """使用UPX压缩可执行文件"""
-    print_header("使用UPX压缩")
-    source_path = os.path.join(
-        CONFIG["output_dir"],
-        CONFIG["cli_dir"],
-        CONFIG["cli_filename"]
-    )
-    dest_dir = os.path.join(CONFIG["output_dir"], CONFIG["gui_dir"])
-
-    try:
-        os.makedirs(dest_dir, exist_ok=True)
-        dest_path = os.path.join(dest_dir, CONFIG["cli_filename"])
-        shutil.copy(source_path, dest_path)
-        print_color("已复制CLI可执行文件到GUI目录", "92")
-    except IOError as e:
-        print_color(f"文件操作失败: {str(e)}", "91")
-        exit(1)
-
-    upx_cmd = f"{CONFIG['upx_path']} {dest_path}"
-    execute_command(upx_cmd)
+# def process_upx() -> None:
+#     """使用UPX压缩可执行文件"""
+#     print_header("使用UPX压缩")
+#     source_path = os.path.join(
+#         CONFIG["output_dir"],
+#         CONFIG["cli_dir"],
+#         CONFIG["cli_filename"]
+#     )
+#     dest_dir = os.path.join(CONFIG["output_dir"], CONFIG["gui_dir"])
+#
+#     try:
+#         os.makedirs(dest_dir, exist_ok=True)
+#         dest_path = os.path.join(dest_dir, CONFIG["cli_filename"])
+#         shutil.copy(source_path, dest_path)
+#         print_color("已复制CLI可执行文件到GUI目录", "92")
+#     except IOError as e:
+#         print_color(f"文件操作失败: {str(e)}", "91")
+#         exit(1)
+#
+#     upx_cmd = f"{CONFIG['upx_path']} {dest_path}"
+#     execute_command(upx_cmd)
 
 
 def calculate_sha256(file_path: str) -> str:
@@ -235,8 +228,8 @@ def main():
     config.new_version = new_version
 
     config.build_gui = input("是否构建GUI应用？ (y/n): ").lower() == "y"
-    config.build_cli = input("是否构建CLI应用？ (y/n): ").lower() == "y"
-    config.use_upx = input("是否使用UPX压缩CLI？ (y/n): ").lower() == "y"
+    # config.build_cli = input("是否构建CLI应用？ (y/n): ").lower() == "y"
+    # config.use_upx = input("是否使用UPX压缩CLI？ (y/n): ").lower() == "y"
     config.use_7z = input("是否创建7z压缩包？ (y/n): ").lower() == "y"
 
     # 前置检查
@@ -251,10 +244,10 @@ def main():
     try:
         if config.build_gui:
             build_gui_app(config)
-        if config.build_cli:
-            build_cli_app(config)
-        if config.use_upx:
-            process_upx()
+        # if config.build_cli:
+        #     build_cli_app(config)
+        # if config.use_upx:
+        #     process_upx()
         if config.use_7z:
             create_7z_archive(config)
     except KeyboardInterrupt:
