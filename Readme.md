@@ -50,6 +50,11 @@ redis配置默认本机。Data_limit_default是默认限制条数只在初始化
 ## 报告端
 报告端任选，有对应报告端就有对应数据显示(都在report文件夹中)
 ### pc报告端
+> [!NOTE]
+> 现在可以下载无需环境的win-64 zip版本
+> https://github.com/2412322029/seeme/releases/latest
+
+ :+1: 附带应用时间统计功能
 
 使用python脚本
 report.py是一个报告命令行程序，定期向服务器发送当前正在玩儿什么，-h显示帮助
@@ -123,9 +128,10 @@ Set-Alias -Name reportw -Value get-reportw
 pip install nuitka
 进入report目录，使用powershell运行build.ps1
 
-![image](https://github.com/user-attachments/assets/374906f0-5450-4d5a-9835-5d596998494b)
+![image](https://github.com/user-attachments/assets/d806a0c1-6f3f-43ef-95a4-d353fdcd6c8f)
 
-![image](https://github.com/user-attachments/assets/26480bb0-d956-40ae-a19b-41ab343e4329)
+![image](https://github.com/user-attachments/assets/95454041-d614-405f-b052-a1ce446bb14c)
 
-![image](https://github.com/user-attachments/assets/07d1fdb3-77d3-461e-b36e-89afcd0c2c29)
+![image](https://github.com/user-attachments/assets/e1c79958-5a25-46ef-8589-b52ae888c83b)
+
 
