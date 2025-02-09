@@ -56,9 +56,12 @@ redis配置默认本机。Data_limit_default是默认限制条数只在初始化
 
  :+1: 附带应用时间统计功能
 
-使用python脚本
+或者使用python脚本
 report.py是一个报告命令行程序，定期向服务器发送当前正在玩儿什么，-h显示帮助
 如:`python(w) report.py run -u 服务器地址 -k 'your key'`
+
+report_gui.py 是上面的gui包装，附带其他功能。
+打包后无命令行参数启动自身，否则启动report.py，不带终端窗口，没有输出，在后台运行
 ```bash
 > report -h                                    
 usage: report.py [-h] {log,status,kill,pause,resume,run,getlimit,getinfo,delinfo,setlimit} ...
@@ -83,20 +86,7 @@ options:
   -h, --help            show this help message and exit
 ```
 
-添加命令别名和使用环境变量更加方便powershell打开个人配置文件`notepad $PROFILE`添加以下内容
-```powershell
-$env:REPORT_KEY="your key"
-$env:REPORT_URL="服务器地址"
 
-function get-report {
-    python path\to\report.py @Args
-}
-function get-reportw {
-    pythonw path\to\report.py @Args
-}
-Set-Alias -Name report -Value get-report
-Set-Alias -Name reportw -Value get-reportw
-```
 ### 浏览器端
 
 使用油猴脚本(安装油猴扩展,谷歌扩展商店下载)
