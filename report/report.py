@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+import traceback
 from datetime import datetime
 from pprint import pprint
 
@@ -68,14 +69,14 @@ def check_process(pf, check_pause=True, pt=True):
         if is_process_running(pid):
             process = psutil.Process(pid)
             info["status"] = process.status()
-            rss, vms = process.memory_info().rss, process.memory_info().vms
-            info["memory"] = f'{rss // (1024 ** 2)}/{vms // (1024 ** 2)}'
+            rss = process.memory_info().rss
+            info["memory"] = f'{rss // (1024 ** 2)}'
             info["cmdline"] = " ".join(process.cmdline())
             create_time = datetime.fromtimestamp(process.create_time())
             info["create_time"] = (f"{create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
                                    f"({timeAgo(create_time)} ago)")
             ifPrint(f"status      : \033[92m{info['status']}\033[0m", IF=pt)
-            ifPrint(f"mem(rss/vms): {info['memory']} MB", IF=pt)
+            ifPrint(f"mem(rs     ): {info['memory']} MB", IF=pt)
             ifPrint(f"cmdline     : {info['cmdline']}", IF=pt)
             ifPrint(f"create time : {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
                     f"(\033[92m{timeAgo(create_time)}\033[0m ago)", IF=pt)
@@ -492,7 +493,8 @@ def run(args):
                     upload_icon(args, [exe_name + ".png"])
             time.sleep(int(args.cycle_time))
     except Exception as e:
-        logger.fatal(f"{e}")
+        error_message = traceback.format_exc()
+        logger.fatal(f"发生异常终止程序运行：{e}\n{error_message}")
         sys.exit(-1)
 
 

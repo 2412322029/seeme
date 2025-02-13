@@ -96,7 +96,7 @@ def print_analysis():
     """以表格形式打印应用的总使用时长"""
     print(f"{'应用名称':<28} {'总使用时长':<15} {'路径'}")
     print("-" * 70)
-    for item in get_total_duration_for_all():
+    for item in get_total_duration_for_all().result():
         name = item['name'].split('\\')[-1]
         duration = format_seconds(item['total_duration'])
         print(f"{name:<30} {duration:<20} {item['name']}")

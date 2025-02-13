@@ -161,6 +161,10 @@ class mainWindows(ttk.Frame):
             pass
 
     def create_process_checker(self):
+        if os.path.exists("report.exe"):
+            path = os.path.join(os.path.dirname(__file__), "report.exe")
+        else:
+            path = f"pythonw {os.path.join(os.path.dirname(__file__), 'report.py')}"
         row = ttk.Frame()
         row.pack(fill=X)
         self.notebook.add(row, text="进程管理", state="normal")
@@ -168,14 +172,27 @@ class mainWindows(ttk.Frame):
         lf.pack(fill="both", padx=10, pady=5)
         btn_frame = ttk.Frame(lf)
         btn_frame.pack(fill=BOTH, padx=10, pady=5)
-        self.run_button = ttk.Button(btn_frame, text="运行", command=self.run_report, width=10)
+        self.run_button = ttk.Button(btn_frame, text="运行", command=self.run_report, width=8)
         self.run_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.stop_button = ttk.Button(btn_frame, text="停止", command=stop_report, width=10)
+        self.stop_button = ttk.Button(btn_frame, text="停止", command=stop_report, width=8)
         self.stop_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.pause_button = ttk.Button(btn_frame, text="暂停", command=pause_process, width=10)
+        self.pause_button = ttk.Button(btn_frame, text="暂停", command=pause_process, width=8)
         self.pause_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.resume_button = ttk.Button(btn_frame, text="恢复", command=resume_process, width=10)
+        self.resume_button = ttk.Button(btn_frame, text="恢复", command=resume_process, width=8)
         self.resume_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
+        self.startup1_var = tk.IntVar(value=Aut.check_startup_exists('seeme-report'))
+
+        def on_toggle1():
+            if self.startup1_var.get():
+                Aut.set_startup('seeme-report', f'{path} run -c {str(self.cycle_time)}')
+            else:
+                Aut.delete_startup('seeme-report')
+
+        self.startup1 = ttk.Checkbutton(btn_frame, text="开机启动", variable=self.startup1_var,
+                                        command=on_toggle1, width=10)
+        self.startup1.pack(side=LEFT, anchor=W, padx=20, pady=2)
+        ToolTip(self.startup1, 'no',
+                at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report')}"))
         self.tree = ttk.Treeview(lf, columns=("k", "v"), show="", height=6)
         self.tree.pack(fill="both", expand=True)
         self.tree.column("k", stretch=False)
@@ -185,14 +202,27 @@ class mainWindows(ttk.Frame):
         lf2.pack(fill="both", padx=10, pady=5)
         btn2_frame = ttk.Frame(lf2)
         btn2_frame.pack(fill=BOTH, padx=10, pady=5)
-        self.run2_button = ttk.Button(btn2_frame, text="运行", command=self.run_aut, width=10)
+        self.run2_button = ttk.Button(btn2_frame, text="运行", command=self.run_aut, width=8)
         self.run2_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.stop2_button = ttk.Button(btn2_frame, text="停止", command=stop_aut, width=10)
+        self.stop2_button = ttk.Button(btn2_frame, text="停止", command=stop_aut, width=8)
         self.stop2_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.analysis_button = ttk.Button(btn2_frame, text="打印分析", command=Aut.print_analysis, width=10)
+        self.analysis_button = ttk.Button(btn2_frame, text="打印分析", command=Aut.print_analysis, width=8)
         self.analysis_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.clear_button = ttk.Button(btn2_frame, text="清空输出", command=self.clear_output_viewer, width=10)
+        self.clear_button = ttk.Button(btn2_frame, text="清空输出", command=self.clear_output_viewer, width=8)
         self.clear_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
+        self.startup2_var = tk.IntVar(value=Aut.check_startup_exists('seeme-report-aut'))
+
+        def on_toggle2():
+            if self.startup2_var.get():
+                Aut.set_startup('seeme-report-aut', f'{path} aut')
+            else:
+                Aut.delete_startup('seeme-report-aut')
+
+        self.startup2 = ttk.Checkbutton(btn2_frame, text="开机启动", variable=self.startup2_var,
+                                        command=on_toggle2, width=10)
+        self.startup2.pack(side=LEFT, anchor=W, padx=20, pady=2)
+        ToolTip(self.startup2, f"no",
+                at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report-aut')}"))
         self.tree2 = ttk.Treeview(lf2, columns=("k", "v"), show="", height=5)
         self.tree2.pack(fill="both", expand=True)
         self.tree2.column("k", stretch=False)
@@ -287,7 +317,7 @@ class mainWindows(ttk.Frame):
             tr.delete(i)
         tr.insert("", "end", values=("进程ID", info.get("pid", "N/A")))
         tr.insert("", "end", values=("状态", status), tags=(status,))
-        tr.insert("", "end", values=("(常驻/虚拟)内存", f"{info.get('memory', 0)} MB"))
+        tr.insert("", "end", values=("工作集内存", f"{info.get('memory', 0)} MB"))
         tr.insert("", "end", values=("创建时间", info.get("create_time", "N/A")))
         tr.insert("", "end", values=("命令行", info.get("cmdline", "N/A")))
         if check_pause:
@@ -643,7 +673,7 @@ class mainWindows(ttk.Frame):
                         print(e)
                         lab.winfo_exists() and lab.config(text=f"{show_text}\n查询错误: {e}")
                 else:
-                    lab.winfo_exists() and lab.config(text=f"{show_text}\n按住ctrl每小时的信息")
+                    lab.winfo_exists() and lab.config(text=f"{show_text}\n按住ctrl显示每小时的信息")
 
                 after_id = self.scrollable_frame.after(100, lambda: get_show(f))
 
@@ -739,7 +769,7 @@ def main():
     try:
         app = ttk.Window("Report", "cyborg")
         app.geometry("950x1000")
-        app.iconbitmap("icon.ico")
+        app.iconbitmap(os.path.join(os.path.dirname(__file__), "icon.ico"))
         mainWindows(app)
 
         def on_key_press(event):

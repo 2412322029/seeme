@@ -132,7 +132,7 @@ if __name__ == '__main__':
         ("橙子", 40, "orange", "<Button-1>", lambda event, idx: print(f"橙子柱子 {idx} 被点击"), "这是橙子柱子"),
         ("葡萄", 10, "purple", "<Button-1>", lambda event, idx: print(f"葡萄柱子 {idx} 被点击"), "这是葡萄柱子")
     ]
-    chart = BarChart(root, data=data, width=500, height=300)
+    chart = BarChart(root, data=data, width=50, height=300)
     chart.pack(padx=20, pady=20)
 
     # 运行主循环
