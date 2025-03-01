@@ -1,12 +1,8 @@
 .idea/
 __pycache__/
-report/log/
-/report/.pid
-/report/.pause
-data.json
+.venv
 /server/templates/exe_icon/
-/server/cache.json
-/report/exe_icon/
 dist/
 /report/build/
-/report/settings.txt
+.env
+report/update.exe

@@ -22,6 +22,13 @@ def print_app_usage_time():
     return rows
 
 
+def delete_app_by_name(app_name):
+    """删除指定 name 的所有条目"""
+    cursor.execute("DELETE FROM app_usage WHERE name = ?", (app_name,))
+    conn.commit()
+    print(f"已删除所有名为 '{app_name}' 的应用记录。")
+
+
 def get_all_names():
     """获取所有不同的应用名称"""
     cursor.execute('''

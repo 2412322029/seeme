@@ -3,7 +3,6 @@ import os
 import queue
 import subprocess
 import sys
-import threading
 import tkinter as tk
 import traceback
 import webbrowser
@@ -184,7 +183,7 @@ class mainWindows(ttk.Frame):
 
         def on_toggle1():
             if self.startup1_var.get():
-                Aut.set_startup('seeme-report', f'{path} run -c {str(self.cycle_time)}')
+                Aut.set_startup('seeme-report', f'{path} run -c {str(self.cycle_time)} --without_check')
             else:
                 Aut.delete_startup('seeme-report')
 
@@ -206,15 +205,13 @@ class mainWindows(ttk.Frame):
         self.run2_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
         self.stop2_button = ttk.Button(btn2_frame, text="停止", command=stop_aut, width=8)
         self.stop2_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.analysis_button = ttk.Button(btn2_frame, text="打印分析", command=Aut.print_analysis, width=8)
-        self.analysis_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.clear_button = ttk.Button(btn2_frame, text="清空输出", command=self.clear_output_viewer, width=8)
-        self.clear_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
+        # self.analysis_button = ttk.Button(btn2_frame, text="打印分析", command=Aut.print_analysis, width=8)
+        # self.analysis_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
         self.startup2_var = tk.IntVar(value=Aut.check_startup_exists('seeme-report-aut'))
 
         def on_toggle2():
             if self.startup2_var.get():
-                Aut.set_startup('seeme-report-aut', f'{path} aut')
+                Aut.set_startup('seeme-report-aut', f'{path} aut --without_check')
             else:
                 Aut.delete_startup('seeme-report-aut')
 
@@ -228,6 +225,17 @@ class mainWindows(ttk.Frame):
         self.tree2.column("k", stretch=False)
         self.tree2.column("v", stretch=True)
         self.update_process_info_loop()
+
+        self.cmd_frame = ttk.LabelFrame(row, text="运行命令行命令")
+        self.cmd_frame.pack(fill=BOTH, padx=10, pady=5)
+        self.cmd_entry = ttk.Entry(self.cmd_frame, width=50)
+        self.cmd_entry.pack(side=LEFT, padx=10, pady=5, anchor=W)
+        self.cmd_entry.insert(0, '--help')
+        self.runcmd_button = ttk.Button(self.cmd_frame, text="运行", command=self.run_cmd, width=8)
+        self.runcmd_button.pack(side=LEFT, anchor=W, padx=10, pady=5)
+        self.clear_button = ttk.Button(self.cmd_frame, text="清空输出", command=self.clear_output_viewer, width=8)
+        self.clear_button.pack(side=LEFT, anchor=W, padx=10, pady=5)
+
         self.output_frame = ttk.LabelFrame(row, text="输出")
         self.output_frame.pack(fill=BOTH, padx=10, pady=5)
         self.output_text = ttk.Text(self.output_frame, wrap=WORD)
@@ -243,7 +251,7 @@ class mainWindows(ttk.Frame):
         if not self.key or not self.url:
             messagebox.showerror("错误", f"{self.key=},{self.url=}")
             return
-        if os.path.exists("report.exe"):
+        if os.path.exists(os.path.join(os.path.dirname(__file__), "report.exe ")):
             _args = ["report.exe", "run", "-c", str(self.cycle_time)]
         else:
             _args = ["python", "report.py", "run", "-c", str(self.cycle_time)]
@@ -252,9 +260,7 @@ class mainWindows(ttk.Frame):
                                             text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
                                             bufsize=1, encoding="utf-8")
             # 启动线程来读取子进程的输出
-            self.output_thread = threading.Thread(target=self.read_output, args=(self.process,))
-            self.output_thread.daemon = True
-            self.output_thread.start()
+            print(f"running pid={self.process.pid}")
         except Exception as e:
             messagebox.showerror("错误", f"启动失败: {e}")
 
@@ -262,7 +268,7 @@ class mainWindows(ttk.Frame):
         if is_process_running(read_pid(Aut.aut_pid_file)):
             messagebox.showinfo("info", f"已经在运行!")
             return
-        if os.path.exists("report.exe"):
+        if os.path.exists(os.path.join(os.path.dirname(__file__), "report.exe ")):
             _args = ["report.exe", "aut"]
         else:
             _args = ["python", "report.py", "aut"]
@@ -270,12 +276,28 @@ class mainWindows(ttk.Frame):
             self.process2 = subprocess.Popen(_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                              creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
                                              bufsize=1, encoding="utf-8")
-            # 启动线程来读取子进程的输出
-            self.output_thread2 = threading.Thread(target=self.read_output, args=(self.process2,))
-            self.output_thread2.daemon = True
-            self.output_thread2.start()
+            print(f"running pid={self.process2.pid}")
         except Exception as e:
             messagebox.showerror("错误", f"启动失败: {e}")
+
+    def run_cmd(self):
+        command_string = self.cmd_entry.get().strip()
+        if command_string == '': return
+        if command_string.startswith('run') or command_string.startswith('aut'):
+            print('不能在这里运行阻塞程序')
+            return
+        cli = os.path.join(os.path.dirname(__file__), "report_cli.exe ")
+        import shutil
+        if shutil.which('python'):
+            cli = f'python {os.path.join(os.path.dirname(__file__), "report.py ")}'
+        elif not os.path.exists(cli):
+            print('需要 report_cli.exe')
+            return
+        self.process3 = subprocess.Popen(cli + " " + command_string, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                         text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
+                                         bufsize=1, encoding="utf-8")
+        Aut.executor.submit(self.read_output, self.process3)
+        self.cmd_entry.delete(0, END)
 
     def read_output(self, pc):
         try:
@@ -645,11 +667,24 @@ class mainWindows(ttk.Frame):
             icon_image = Image.open(icon_path)
             icon_image = icon_image.resize((32, 32), Image.Resampling.LANCZOS)
             icon_photo = ImageTk.PhotoImage(icon_image)
-            icon_label = ttk.Label(app_frame, image=icon_photo)
+            icon_label = ttk.Label(app_frame, image=icon_photo, cursor='hand2')
             icon_label.image = icon_photo
         else:
-            icon_label = ttk.Label(app_frame, text="", width=3)
+            icon_label = ttk.Label(app_frame, text="", width=3, cursor='hand2')
+
+        def delete_app(event):
+            confirm = messagebox.askyesno("确认删除", f"确定要删除应用 '{app_name}' 的所有记录吗？")
+            if confirm:
+                Aut.delete_app_by_name(app["name"])
+                messagebox.showinfo('info', f"已删除所有名为 '{app_name}' 的应用记录。")
+                # self.load_usage_data()
+            else:
+                messagebox.showinfo('info', f"取消删除应用 '{app_name}' 的记录。")
+
+        icon_label.bind('<Button-3>', lambda event: delete_app(event))
+        icon_label.bind('<Button-1>', lambda event: open_folder(icon_path, select=True))
         icon_label.pack(side="left", padx=5)
+        ToolTip(icon_label, f'{app_name}\n左键点击打开icon所在位置\n右键点击删除该应用的记录', delay=100)
         name_label = ttk.Label(app_frame, text=app_name, width=30, anchor="w", cursor="hand2")
         name_label.pack(side="left", padx=5)
         name_label.bind("<Button-1>", lambda event: open_folder(app["name"], select=True))
@@ -771,7 +806,6 @@ def main():
         app.geometry("950x1000")
         app.iconbitmap(os.path.join(os.path.dirname(__file__), "icon.ico"))
         mainWindows(app)
-
         def on_key_press(event):
             Press_key.add(event.keysym)
 
@@ -791,5 +825,5 @@ if __name__ == '__main__':
     else:
         from report import main, args_parser
 
-        args = args_parser()
+        args = args_parser()[0]
         main(args)

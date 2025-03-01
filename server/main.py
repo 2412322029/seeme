@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
@@ -8,11 +9,25 @@ from config import SECRET_KEY
 from mcinfo import mcinfo, mclatency
 from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
     set_data, get_data
-from steamapi import steam_info
+from steamapi import steam_info, steam_friend_list, steam_friend_info
 
 app = Flask(__name__)
 UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon")
 os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
+
+
+# TODO
+# @app.before_request
+# def force_https():
+#     if request.url.startswith('http://'):
+#         url = request.url.replace('http://', 'https://', 1)
+#         return redirect(url, code=301)
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'  # 允许所有域
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return response
 
 
 def is_valid_address(address: str) -> bool:
@@ -45,6 +60,11 @@ def index():
 def template_proxy(filename):
     template_dir = os.path.join(app.root_path, 'templates')
     return send_from_directory(template_dir, filename)
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('index.html')
 
 
 @app.route('/set_info', methods=['POST'])
@@ -195,6 +215,22 @@ def get_steam_info():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/get_steam_friend_list', methods=['GET'])
+def get_steam_friend_list():
+    try:
+        return jsonify(steam_friend_list(t=time.time())), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/get_steam_friend_info', methods=['GET'])
+def get_steam_friend_info():
+    try:
+        return jsonify(steam_friend_info()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # @app.teardown_request
 # def teardown_request(response_or_error):
 #     save_data(data)
@@ -203,4 +239,4 @@ def get_steam_info():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=80)
+    app.run(host="127.0.0.1", port=5000)

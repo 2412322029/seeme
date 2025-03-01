@@ -36,25 +36,49 @@ def create_release(api_url, platform, owner, repo, access_token, tag_name, relea
 def upload_asset(api_url, platform, owner, repo, access_token, release_id, file_path):
     if platform == "gitee":
         url = f"{api_url}/repos/{owner}/{repo}/releases/{release_id}/attach_files"
-    else:
-        print("未实现")
-        exit(0)
-    headers = {
-        "Authorization": f"token {access_token}",
-    }
-    file_name = os.path.basename(file_path)
-    params = {
-        "name": file_name
-    }
+        headers = {
+            "Authorization": f"token {access_token}",
+        }
+        file_name = os.path.basename(file_path)
+        params = {
+            "name": file_name
+        }
 
-    with open(file_path, "rb") as file:
-        files = {'file': (file_name, file)}
-        response = requests.post(url, headers=headers, params=params, files=files)
-        if response.status_code == 201:
-            print(f"Asset '{file_name}' uploaded successfully on {platform}.")
+        with open(file_path, "rb") as file:
+            files = {'file': (file_name, file)}
+            response = requests.post(url, headers=headers, params=params, files=files)
+            if response.status_code == 201:
+                print(f"Asset '{file_name}' uploaded successfully on {platform}.")
+            else:
+                print(f"Failed to upload asset on {platform}: {response.status_code} {response.text}")
+                exit(0)
+    elif platform.lower() == "github":
+        url = f"{api_url}/repos/{owner}/{repo}/releases/{release_id}"
+        response = requests.get(url, headers={"Authorization": f"token {access_token}"})
+        if response.status_code == 200:
+            upload_url = response.json()["upload_url"]
+            upload_url = upload_url.replace("{?name,label}", "")  # 清理模板参数
+            file_name = os.path.basename(file_path)
+            headers = {
+                "Authorization": f"token {access_token}",
+                "Content-Type": "application/octet-stream"
+            }
+            params = {
+                "name": file_name
+            }
+            with open(file_path, "rb") as file:
+                response = requests.post(upload_url, headers=headers, params=params, data=file)
+                if response.status_code == 201:
+                    print(f"Asset '{file_name}' uploaded successfully on {platform}.")
+                else:
+                    print(f"Failed to upload asset on {platform}: {response.status_code} {response.text}")
+                    exit(0)
         else:
-            print(f"Failed to upload asset on {platform}: {response.status_code} {response.text}")
+            print(f"Failed to get release details on {platform}: {response.status_code} {response.text}")
             exit(0)
+    else:
+        print("Unsupported platform for upload.")
+        exit(0)
 
 
 def main(platform, access_token, tag_name, release_name, release_description, files: list[str]):
@@ -90,7 +114,7 @@ if __name__ == "__main__":
         PLATFORM = "github"
         ACCESS_TOKEN = os.environ.get("GITHUB_TOKEN")  # 从环境变量获取GitHub Token
         if not ACCESS_TOKEN:
-            print("env:GITHUB_TOKEN not found")
+            print("env:github_token not found")
             exit(0)
     else:
         exit(0)

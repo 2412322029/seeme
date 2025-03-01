@@ -112,6 +112,9 @@ def get_allIcon():
 def save_exe_icon(exe_path, exe_name: str, a=32):
     # 多线程环境下可能表现不稳定，保存部分图片,tk部分设置a=48保存正常??
     # 与图标绘制的设备上下文（DC）相关
+    if not os.path.exists(exe_path):
+        logger.info(f"文件 {exe_path} 不存在，跳过保存")
+        return
     if os.path.exists(f"{icon_dir}/{exe_name}.png"):
         return True
     try:
@@ -284,7 +287,7 @@ def upload_icon(args, filenames: list[str]):
             logger.info(f"ServerIcon 更新后->{ServerIcon}")
             logger.info(f"{response.json()}")
         else:
-            logger.error(f"Failed to upload icon{filter_filenames}: {response.status_code} - {response.text}")
+            logger.error(f"Failed to upload {url} icon {filter_filenames}: {response.status_code} - {response.text}")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request error: {str(e)}")
     except Exception as e:
@@ -374,6 +377,7 @@ def args_parser():
         return value
 
     parser = argparse.ArgumentParser(description='''定时报告命令行程序''')
+    parser.add_argument('-v', '--version', action='store_true', help='显示版本')
     subparsers = parser.add_subparsers(dest='command', help='可用的命令')
     parser_log = subparsers.add_parser('log', help='查看最新日志')
     parser_log.add_argument("-t", "--tail", type=int, nargs="?", default=10, help="显示的最后几行，默认为10行")
@@ -388,6 +392,7 @@ def args_parser():
     parser_run = subparsers.add_parser('run', help='运行定时报告程序',
                                        parents=[parent_key_parser, parent_url_parser])
     parser_run.add_argument('--test', action='store_true', help='测试api')
+    parser_run.add_argument('--without_check', action='store_true', help='不检查进程是否存在')
     parser_run.add_argument('-c', '--cycle_time', type=check_cycle_time, help='报告周期(单位秒)', default=600)
     # 服务器端命令
     subparsers.add_parser('getlimit', help='获取服务器限制值', parents=[parent_url_parser])
@@ -426,6 +431,7 @@ def args_parser():
     parser_aut.add_argument('--status', action='store_true', help='查询 "应用使用时间统计" 的进程状态 and exit')
     parser_aut.add_argument('--kill', action='store_true', help='杀死 "应用使用时间统计" 进程 and exit')
     parser_aut.add_argument('--analysis', action='store_true', help='显示应用使用时间统计')
+    parser_aut.add_argument('--without_check', action='store_false', help='不检查进程是否存在')
 
     parser_args = parser.parse_args()
     # 确保 args.key 和 args.url 存在
@@ -437,8 +443,9 @@ def args_parser():
         parser_args.key = report_key
     if report_url and not parser_args.url:
         parser_args.url = report_url
-
-    return parser_args
+    if not hasattr(parser_args, 'without_check'):
+        parser_args.without_check = False
+    return parser_args, parser
 
 
 # def upload_db(args, sql_path: str):
@@ -452,27 +459,30 @@ def args_parser():
 #         logger.error(f"{e}")
 
 
-def run_aut():
+def run_aut(check=True):
     try:
-        p = read_pid(Aut.aut_pid_file)
-        if is_process_running(p):
-            print(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
-            check_process(Aut.aut_pid_file, check_pause=False)
-            sys.exit(0)
+        if check:
+            p = read_pid(Aut.aut_pid_file)
+            if is_process_running(p):
+                logger.error(
+                    f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
+                check_process(Aut.aut_pid_file, check_pause=False)
+                sys.exit(0)
+        logger.info("start-aut".center(50, '-'))
         Aut.run()
     except Exception as e:
         logger.fatal(f"{e}")
         sys.exit(-1)
 
 
-def run(args):
+def run(args, check=True):
     try:
-        p = read_pid(pid_file)
-        if is_process_running(p):
-            print(
-                f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序（查看任务管理器搜索python），删除report.pid文件后重试")
-            check_process(pid_file)
-            sys.exit(0)
+        if check:
+            p = read_pid(pid_file)
+            if is_process_running(p):
+                logger.error(f"report 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序，删除report.pid文件后重试")
+                check_process(pid_file)
+                sys.exit(0)
         # 保存进程ID到文件
         with open(pid_file, 'w') as f:
             f.write(str(os.getpid()))
@@ -512,11 +522,14 @@ def test_run(args):
 
 
 def main(args):
+    if args.version:
+        print(Aut.__version__)
+        sys.exit(0)
     if args.command == 'run':
         if args.test:
             test_run(args)
             sys.exit(0)
-        run(args)
+        run(args, check=args.without_check)
     if args.command == 'aut':
         if args.status:
             check_process(Aut.aut_pid_file, check_pause=False)
@@ -527,7 +540,7 @@ def main(args):
         if args.analysis:
             Aut.print_analysis()
             sys.exit(0)
-        run_aut()
+        run_aut(check=args.without_check)
     elif args.command == 'status':
         print("自动汇报".center(50, "-"))
         check_process(pid_file)
@@ -555,6 +568,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(args_parser())
+    main(args_parser()[0])
     # for o in Aut.get_all_names():
     #     save_exe_icon(o, o.split('\\')[-1])

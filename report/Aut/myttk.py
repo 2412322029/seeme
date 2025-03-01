@@ -43,8 +43,7 @@ class ToolTip:
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{self.x}+{self.y}")
-        self.label = tk.Label(self.tipwindow, text=self.text, justify=tk.LEFT, relief='groove', borderwidth=2,
-                              font=("tahoma", "10", "normal"))
+        self.label = tk.Label(self.tipwindow, text=self.text, justify=tk.LEFT, relief='groove', borderwidth=2)
         self.label.pack(ipadx=4)
         if self.at_show_func:
             self.at_show_func(self.label)

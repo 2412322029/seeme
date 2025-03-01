@@ -152,37 +152,37 @@ def build_gui_app(config: BuildConfig) -> None:
         print_color(f"复制update.exe文件失败: {str(e)}", "91")
 
 
-# def build_cli_app(config: BuildConfig) -> None:
-#     print_header("开始构建CLI应用程序")
-#     command = (
-#         f"nuitka --standalone --follow-imports --lto=yes "
-#         f"--product-name=report_cli --file-version={config.new_version}.0 "
-#         f"--output-filename={CONFIG['cli_filename']} --output-dir={CONFIG['output_dir']} report.py"
-#     )
-#     execute_command(command)
+def build_cli_app(config: BuildConfig) -> None:
+    print_header("开始构建CLI应用程序")
+    command = (
+        f"nuitka --standalone --follow-imports --lto=yes "
+        f"--product-name=report_cli --file-version={config.new_version}.0 "
+        f"--output-filename={CONFIG['cli_filename']} --output-dir={CONFIG['output_dir']} report.py"
+    )
+    execute_command(command)
 
 
-# def process_upx() -> None:
-#     """使用UPX压缩可执行文件"""
-#     print_header("使用UPX压缩")
-#     source_path = os.path.join(
-#         CONFIG["output_dir"],
-#         CONFIG["cli_dir"],
-#         CONFIG["cli_filename"]
-#     )
-#     dest_dir = os.path.join(CONFIG["output_dir"], CONFIG["gui_dir"])
-#
-#     try:
-#         os.makedirs(dest_dir, exist_ok=True)
-#         dest_path = os.path.join(dest_dir, CONFIG["cli_filename"])
-#         shutil.copy(source_path, dest_path)
-#         print_color("已复制CLI可执行文件到GUI目录", "92")
-#     except IOError as e:
-#         print_color(f"文件操作失败: {str(e)}", "91")
-#         exit(1)
-#
-#     upx_cmd = f"{CONFIG['upx_path']} {dest_path}"
-#     execute_command(upx_cmd)
+def process_upx() -> None:
+    """使用UPX压缩可执行文件"""
+    print_header("使用UPX压缩")
+    source_path = os.path.join(
+        CONFIG["output_dir"],
+        CONFIG["cli_dir"],
+        CONFIG["cli_filename"]
+    )
+    dest_dir = os.path.join(CONFIG["output_dir"], CONFIG["gui_dir"])
+
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_path = os.path.join(dest_dir, CONFIG["cli_filename"])
+        shutil.copy(source_path, dest_path)
+        print_color("已复制CLI可执行文件到GUI目录", "92")
+    except IOError as e:
+        print_color(f"文件操作失败: {str(e)}", "91")
+        exit(1)
+
+    upx_cmd = f"{CONFIG['upx_path']} {dest_path}"
+    execute_command(upx_cmd)
 
 
 def calculate_sha256(file_path: str) -> str:
@@ -244,10 +244,10 @@ def main():
     try:
         if config.build_gui:
             build_gui_app(config)
-        # if config.build_cli:
-        #     build_cli_app(config)
-        # if config.use_upx:
-        #     process_upx()
+        if config.build_cli:
+            build_cli_app(config)
+        if config.use_upx:
+            process_upx()
         if config.use_7z:
             create_7z_archive(config)
     except KeyboardInterrupt:
