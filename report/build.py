@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import sys
+from datetime import datetime
 from typing import Tuple
 
 CONFIG = {
@@ -109,6 +110,7 @@ def get_version_info() -> Tuple[bool, str]:
     elif level == 2:  # 补丁版本递增
         parts[2] += 1
     new_version = ".".join(map(str, parts))
+    __buildAt__ = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 当前时间
     input(f"{new_version=}(Press Enter to continue)")
     try:
         with open(version_file, "w", encoding="utf-8") as f:
@@ -116,6 +118,11 @@ def get_version_info() -> Tuple[bool, str]:
                 r'__version__\s*=\s*".*?"',
                 f'__version__ = "{new_version}"',
                 content
+            )
+            new_content = re.sub(
+                r'__buildAt__\s*=\s*".*?"',
+                f'__buildAt__ = "{__buildAt__}"',
+                new_content
             )
             f.write(new_content)
     except IOError as e:

@@ -523,7 +523,8 @@ def test_run(args):
 
 def main(args):
     if args.version:
-        print(Aut.__version__)
+        print(f'version {Aut.__version__}')
+        print(f'build at {Aut.__buildAt__}')
         sys.exit(0)
     if args.command == 'run':
         if args.test:

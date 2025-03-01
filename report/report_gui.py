@@ -783,16 +783,18 @@ class mainWindows(ttk.Frame):
         label2.bind("<Button-1>", open_url)
         ttk.Label(self.about_row, text=f"version:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         ttk.Label(self.about_row, text=f"{Aut.__version__}").grid(row=1, column=1, padx=5, pady=5, sticky="w")
+        ttk.Label(self.about_row, text=f"build time:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        ttk.Label(self.about_row, text=f"{Aut.__buildAt__}").grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
         self.info_label = ttk.Label(self.about_row, text="当前是最新版", foreground="#2AADFF")
-        self.info_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        self.info_label.grid(row=3, column=1, padx=5, pady=5, sticky="w")
         self.info_label.bind("<Button-1>", self.show_and_download)
 
         def get_update(event):
             Aut.get_update_info(self.selected_source, self)
 
         label3 = ttk.Label(self.about_row, text="检查更新", foreground="#2AADFF", cursor="hand2")
-        label3.grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        label3.grid(row=3, column=0, padx=5, pady=5, sticky="e")
         label3.bind("<Button-1>", get_update)
 
         self.about_row.columnconfigure(0, weight=0)

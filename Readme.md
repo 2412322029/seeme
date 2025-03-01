@@ -16,7 +16,7 @@ graph LR
 	
 	F --> x[前端数据展示]
 	
-	L[python命令行工具<br> report.py<br> 配置环境变量<br>添加命令别名<br>编辑$PROFILE文件]
+	L[python命令行工具<br> report.py]
 	M[油猴脚本<br>自动汇报.js<br>  安装油猴扩展<br>配置API Key]
 	N[MacroDroid宏<br>自动汇报.macro<br> 导入MacroDroid脚本<br>配置API Key]
     L--> Y[集成了进程管理，日志查看，服务端数据管理]
@@ -116,8 +116,8 @@ options:
 ### 打包指南
 
 pip install nuitka
-进入report目录，使用powershell运行build.ps1
-
+进入report目录，运行build.py\
+使用release.py 发布
 ![image](https://github.com/user-attachments/assets/d806a0c1-6f3f-43ef-95a4-d353fdcd6c8f)
 
 ![image](https://github.com/user-attachments/assets/95454041-d614-405f-b052-a1ce446bb14c)
