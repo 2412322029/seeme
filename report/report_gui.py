@@ -287,10 +287,7 @@ class mainWindows(ttk.Frame):
             print('不能在这里运行阻塞程序')
             return
         cli = os.path.join(os.path.dirname(__file__), "report_cli.exe ")
-        import shutil
-        if shutil.which('python'):
-            cli = f'python {os.path.join(os.path.dirname(__file__), "report.py ")}'
-        elif not os.path.exists(cli):
+        if not os.path.exists(cli):
             print('需要 report_cli.exe')
             return
         self.process3 = subprocess.Popen(cli + " " + command_string, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

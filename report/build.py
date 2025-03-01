@@ -235,8 +235,8 @@ def main():
     config.new_version = new_version
 
     config.build_gui = input("是否构建GUI应用？ (y/n): ").lower() == "y"
-    # config.build_cli = input("是否构建CLI应用？ (y/n): ").lower() == "y"
-    # config.use_upx = input("是否使用UPX压缩CLI？ (y/n): ").lower() == "y"
+    config.build_cli = input("是否构建CLI应用？ (y/n): ").lower() == "y"
+    config.use_upx = input("是否使用UPX压缩CLI？ (y/n): ").lower() == "y"
     config.use_7z = input("是否创建7z压缩包？ (y/n): ").lower() == "y"
 
     # 前置检查

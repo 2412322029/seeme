@@ -1,7 +1,10 @@
 import os
 
 import requests
+from dotenv import load_dotenv
 
+# 加载.env文件
+load_dotenv()
 
 def create_release(api_url, platform, owner, repo, access_token, tag_name, release_name, release_description):
     url = f"{api_url}/repos/{owner}/{repo}/releases"
