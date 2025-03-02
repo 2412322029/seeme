@@ -1,0 +1,23 @@
+[project]
+name = "report"
+version = "0.1.7"
+description = "seeme-report"
+authors = [
+    {name = "2412322029",email = "2412322029@qq.com"}
+]
+license = {text = "MIT"}
+requires-python = ">=3.12"
+readme = "../README.md"
+dependencies = [
+    "pillow (>=11.1.0,<12.0.0)",
+    "psutil (>=7.0.0,<8.0.0)",
+    "pywin32 (>=308,<309)",
+    "requests (>=2.32.3,<3.0.0)",
+    "python-dotenv (>=1.0.1,<2.0.0)",
+    "ttkbootstrap (>=1.10.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

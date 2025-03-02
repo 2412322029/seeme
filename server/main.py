@@ -233,9 +233,17 @@ def get_steam_friend_info():
 
 @app.route('/get_deployment_info', methods=['GET'])
 def get_deployment_info():
+    access_count = get_data("access_count")
+    try:
+        access_count = int(access_count)
+    except ValueError:
+        access_count = 0
+    access_count = access_count + 1
+    set_data("access_count", str(access_count))
     deployment_info = {
-        "deploy_time": "2025-03-02 13:18:37",
-        "git_hash": "6c2f79c"
+        "access_count": access_count,
+        "deploy_time": "2025-03-02 15:44:49",
+        "git_hash": "04e825b"
     }
     return jsonify(deployment_info), 200
 

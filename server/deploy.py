@@ -37,7 +37,8 @@ def build_frontend_with_copy():
                     if asset_file.endswith(('.css', '.js')):
                         os.remove(os.path.join(asset_root, asset_file))
     print("Building frontend application...")
-    os.system(f'cd {Frontend_DIR} && npm run build')
+    #  os.system(f'cd {Frontend_DIR} && npm run build')
+    subprocess.run(['npm', 'run', 'build'], cwd=Frontend_DIR, check=True)
     print("Frontend application built successfully.")
     # 将Frontend_DIR/dist目录的内容复制到templates目录
     print("Copying dist content to templates directory...")
@@ -54,15 +55,6 @@ def build_frontend_with_copy():
         else:
             shutil.copy2(src, dst)
     print("Content copied successfully.")
-    # 提交templates目录下的文件到Git仓库
-    print("Committing changes to Git...")
-    os.chdir(TEMPLATES_DIR)  # 切换到templates目录
-    try:
-        subprocess.run(['git', 'add', '.'], check=True)
-        subprocess.run(['git', 'commit', '-m', '自动更新前端代码'], check=True)
-        print("Git commit successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error: Failed to commit to Git: {e}")
 
 def update_deployment_info(DEPLOY_TIME, GIT_HASH):
     """
@@ -83,20 +75,50 @@ FILE_TYPES = ['.py', '.js', '.html', '.css']
 def upload_files():
     with Connection(host=REMOTE_HOST, user=REMOTE_USER, port=REMOTE_PORT) as conn:
         conn.run(f"mkdir -p {REMOTE_DIR}")
-         # 删除远程目录下的 css 和 js 文件
-        print("Deleting existing css and js files in remote directory...")
-        conn.run(f"rm -f {REMOTE_DIR}/templates/assets/*.css {REMOTE_DIR}/templates/assets/*.js")
-        print("Deleted existing css and js files successfully.")
+        # 删除远程目录下的 html, css 和 js 文件
+        print("Deleting existing html, css and js files in remote directory...")
+        if conn.run(f"rm -f {REMOTE_DIR}/templates/assets/*.css {REMOTE_DIR}/templates/assets/*.js {REMOTE_DIR}/templates/index.html"):
+            print("Deleted existing files successfully.")
+        else:   
+            print("Failed to delete existing files.")
+        # 上传.目录中的文件
         for filename in os.listdir('.'):
             if os.path.isfile(filename):
                 if any(filename.endswith(ext) for ext in FILE_TYPES):
                     print(f"Uploading {filename} to {REMOTE_DIR}/{filename}...", end=' ')
                     conn.put(filename, REMOTE_DIR)
                     print(f"Uploaded {filename} successfully.")
+        # 上传 templates/index.html
+        local_index_path = "templates/index.html"
+        remote_index_path = f"{REMOTE_DIR}/templates/"
+        if os.path.isfile(local_index_path):
+            print(f"Uploading {local_index_path} to {remote_index_path}...", end=' ')
+            conn.put(local_index_path, remote_index_path)
+            print(f"Uploaded index.html successfully.")
+
+        # 上传 templates/assets 下的 .css 和 .js 文件
+        local_assets_path = "templates/assets"
+        remote_assets_path = f"{REMOTE_DIR}/templates/assets"
+        for filename in os.listdir(local_assets_path):
+            local_file_path = fr"{local_assets_path}\{filename}"
+            remote_file_path = fr"{remote_assets_path}/{filename}"
+            if os.path.isfile(local_file_path) and any(filename.endswith(ext) for ext in FILE_TYPES):
+                print(f"Uploading {local_file_path} to {remote_file_path}...", end=' ')
+                conn.put(local_file_path, remote_file_path)
+                print(f"Uploaded {filename} successfully.")
+
+        # 更改远程目录的所有权
+        print("Changing ownership of remote directory...")
+        if conn.sudo(f"chown -R www-data:www-data {REMOTE_DIR}").ok:
+            print("Ownership changed successfully.")
+        else:
+            print("Failed to change ownership.")
          # 重新加载 uWSGI 应用
         print("Reloading uWSGI application...")
-        conn.run(f"uwsgi --reload {REMOTE_DIR}/app.pid")
-        print("uWSGI application reloaded successfully.")
+        if conn.run(f"uwsgi --reload {REMOTE_DIR}/app.pid").ok:
+            print("uWSGI application reloaded successfully.")
+        else:
+            print("Failed to reload uWSGI application.")
     print("All specified files have been uploaded.")
 
 

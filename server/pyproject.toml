@@ -1,0 +1,27 @@
+[project]
+name = "seeme-server"
+version = "0.1.0"
+description = "seeme-server"
+authors = [
+    {name = "2412322029",email = "2412322029@qq.com"}
+]
+license = {text = "MIT"}
+readme = "../README.md"
+requires-python = ">=3.10,<4"
+dependencies = [
+    "flask (>=3.1.0,<4.0.0)",
+    "mcstatus (>=11.1.1,<12.0.0)",
+    "redis (>=5.2.1,<6.0.0)",
+    "toml (>=0.10.2,<0.11.0)",
+    "requests (>=2.32.3,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+python-dotenv = "^1.0.1"
+fabric = "^3.2.2"
+

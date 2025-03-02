@@ -8,3 +8,4 @@ dist/
 report/update.exe
 server/app.pid
 server/config.toml
+server/config.toml
