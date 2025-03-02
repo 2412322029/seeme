@@ -1,0 +1,141 @@
+import shutil
+import subprocess
+import http.client
+import traceback
+import json
+import time
+import os
+import re
+from dotenv import load_dotenv
+from fabric import Connection
+# 加载.env文件中的配置
+load_dotenv()
+
+REMOTE_HOST = os.getenv('REMOTE_HOST')  # 远程服务器IP或域名
+REMOTE_USER = os.getenv('REMOTE_USER')  # 远程服务器用户名
+REMOTE_PORT = int(os.getenv('REMOTE_PORT', 22))  # SSH端口，默认为22
+REMOTE_DIR = os.getenv('REMOTE_DIR')  # 远程服务器目标目录
+Frontend_DIR = os.getenv('Frontend_DIR')  # 前端目录
+
+def build_frontend_with_copy():
+    """
+    构建前端应用
+    """
+    # 清理templates目录下的html文件以及子目录assets下的css和js文件
+    TEMPLATES_DIR = './templates'
+    print("Cleaning templates directory...")
+    # 删除templates目录下的所有.html文件
+    for root, dirs, files in os.walk(TEMPLATES_DIR):
+        for file in files:
+            if file.endswith('.html'):
+                os.remove(os.path.join(root, file))
+        # 删除子目录assets下的所有.css和.js文件
+        if 'assets' in dirs:
+            assets_dir = os.path.join(root, 'assets')
+            for asset_root, _, asset_files in os.walk(assets_dir):
+                for asset_file in asset_files:
+                    if asset_file.endswith(('.css', '.js')):
+                        os.remove(os.path.join(asset_root, asset_file))
+    print("Building frontend application...")
+    os.system(f'cd {Frontend_DIR} && npm run build')
+    print("Frontend application built successfully.")
+    # 将Frontend_DIR/dist目录的内容复制到templates目录
+    print("Copying dist content to templates directory...")
+    dist_dir = os.path.join(Frontend_DIR, 'dist')
+    if not os.path.exists(dist_dir):
+        print(f"Error: {dist_dir} does not exist.")
+        return
+    # 复制dist目录下的所有内容到templates
+    for item in os.listdir(dist_dir):
+        src = os.path.join(dist_dir, item)
+        dst = os.path.join(TEMPLATES_DIR, item)
+        if os.path.isdir(src):
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src, dst)
+    print("Content copied successfully.")
+    # 提交templates目录下的文件到Git仓库
+    print("Committing changes to Git...")
+    os.chdir(TEMPLATES_DIR)  # 切换到templates目录
+    try:
+        subprocess.run(['git', 'add', '.'], check=True)
+        subprocess.run(['git', 'commit', '-m', '自动更新前端代码'], check=True)
+        print("Git commit successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: Failed to commit to Git: {e}")
+
+def update_deployment_info(DEPLOY_TIME, GIT_HASH):
+    """
+    使用正则表达式更新 main.py 中的部署时间和 Git 哈希值
+    """
+    filename = 'main.py'
+    with open(filename, 'r', encoding='utf8') as file:
+        content = file.read()
+    content = re.sub(r'"deploy_time": ".*?",', f'"deploy_time": "{DEPLOY_TIME}",', content)
+    content = re.sub(r'"git_hash": ".*?"', f'"git_hash": "{GIT_HASH}"', content)
+    with open(filename, 'w', encoding='utf8') as file:
+        file.write(content)
+    print("Deployment info updated successfully.")
+
+# 本地文件类型
+FILE_TYPES = ['.py', '.js', '.html', '.css']
+
+def upload_files():
+    with Connection(host=REMOTE_HOST, user=REMOTE_USER, port=REMOTE_PORT) as conn:
+        conn.run(f"mkdir -p {REMOTE_DIR}")
+         # 删除远程目录下的 css 和 js 文件
+        print("Deleting existing css and js files in remote directory...")
+        conn.run(f"rm -f {REMOTE_DIR}/templates/assets/*.css {REMOTE_DIR}/templates/assets/*.js")
+        print("Deleted existing css and js files successfully.")
+        for filename in os.listdir('.'):
+            if os.path.isfile(filename):
+                if any(filename.endswith(ext) for ext in FILE_TYPES):
+                    print(f"Uploading {filename} to {REMOTE_DIR}/{filename}...", end=' ')
+                    conn.put(filename, REMOTE_DIR)
+                    print(f"Uploaded {filename} successfully.")
+         # 重新加载 uWSGI 应用
+        print("Reloading uWSGI application...")
+        conn.run(f"uwsgi --reload {REMOTE_DIR}/app.pid")
+        print("uWSGI application reloaded successfully.")
+    print("All specified files have been uploaded.")
+
+
+def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
+    try:
+        # 创建 HTTP 连接
+        conn = http.client.HTTPConnection(REMOTE_HOST, port=80)
+        conn.request("GET", "/get_deployment_info")
+        response = conn.getresponse()
+        
+        if response.status == 200:
+            data = response.read()
+            remote_info = json.loads(data.decode("utf-8"))
+            if remote_info.get("deploy_time") == DEPLOY_TIME and remote_info.get("git_hash") == GIT_HASH:
+                print("Deployment info verified successfully.")
+            else:
+                print("Deployment info verification failed.")
+                print(f"Expected: {DEPLOY_TIME}, {GIT_HASH}")
+                print(f"Actual: {remote_info.get('deploy_time')}, {remote_info.get('git_hash')}")
+            return remote_info
+        else:
+            print(f"Failed to access remote server: {response.status} {response.reason}")
+    except Exception as e:
+        print(f"Error accessing remote server: {e}")
+    finally:
+        conn.close()
+
+try:
+    if input("build the frontend application? (y/n): ").lower() == 'y':
+        build_frontend_with_copy()
+    if input("upload files to the remote server? (y/n): ").lower() == 'y':
+        DEPLOY_TIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        GIT_HASH = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()
+        update_deployment_info(DEPLOY_TIME, GIT_HASH)
+        upload_files()
+        print("wait for the server to restart...")
+        time.sleep(5)
+        verify_deployment_info(DEPLOY_TIME, GIT_HASH)
+except Exception as e:
+    print(f"An error occurred during deployment: {e}")
+    traceback.print_exc()
+    exit(1)

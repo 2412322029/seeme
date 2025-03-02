@@ -6,3 +6,5 @@ dist/
 /report/build/
 .env
 report/update.exe
+server/app.pid
+server/config.toml

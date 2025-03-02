@@ -229,6 +229,15 @@ def get_steam_friend_info():
         return jsonify(steam_friend_info()), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/get_deployment_info', methods=['GET'])
+def get_deployment_info():
+    deployment_info = {
+        "deploy_time": "2025-03-02 13:18:37",
+        "git_hash": "6c2f79c"
+    }
+    return jsonify(deployment_info), 200
 
 
 # @app.teardown_request
