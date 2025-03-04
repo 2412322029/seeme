@@ -2,13 +2,15 @@ import json
 import os
 import re
 import time
+import requests
+from flask import Flask, Response, render_template, request, jsonify, send_from_directory
+from urllib.parse import urlparse
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
-
-from config import SECRET_KEY
+from config import SECRET_KEY, cfg
 from mcinfo import mcinfo, mclatency
 from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
     set_data, get_data
+from ai import completion_api, del_cache
 from steamapi import steam_info, steam_friend_list, steam_friend_info
 
 app = Flask(__name__)
@@ -26,7 +28,7 @@ os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'  # 允许所有域
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, API-KEY'
     return response
 
 
@@ -53,6 +55,13 @@ def get_mclatency(address: str):
 
 @app.route('/')
 def index():
+    access_count = get_data("access_count")
+    try:
+        access_count = int(access_count)
+    except ValueError:
+        access_count = 0
+    access_count = access_count + 1
+    set_data("access_count", str(access_count))
     return render_template('index.html')
 
 
@@ -229,7 +238,7 @@ def get_steam_friend_info():
         return jsonify(steam_friend_info()), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
 
 @app.route('/get_deployment_info', methods=['GET'])
 def get_deployment_info():
@@ -238,14 +247,56 @@ def get_deployment_info():
         access_count = int(access_count)
     except ValueError:
         access_count = 0
-    access_count = access_count + 1
-    set_data("access_count", str(access_count))
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-03-02 15:44:49",
-        "git_hash": "04e825b"
+        "deploy_time": "2025-03-03 23:51:57",
+        "git_hash": "d009bfc"
     }
     return jsonify(deployment_info), 200
+
+
+@app.route('/ai_summary', methods=['GET'])
+def ai_summary():
+    return Response(completion_api(), mimetype="text/event-stream")
+
+
+@app.route('/del_ai_cache', methods=['GET'])
+def del_ai_cache():
+    try:
+        return f'已删除{del_cache()}条'
+    except Exception as e:
+        return str(e)
+
+
+@app.route('/proxy/<path:url>', methods=['GET'])
+def proxy(url):
+    target_url = url
+    if not target_url:
+        return jsonify({'error': 'Target URL is required'}), 400
+
+    # 验证 URL 格式
+    parsed_url = urlparse(target_url)
+    if parsed_url.scheme not in ['http', 'https']:
+        return jsonify({'error': 'Invalid URL scheme'}), 400
+
+    target_domain = parsed_url.netloc
+    headers = dict(request.headers)
+    headers['Host'] = target_domain
+    if target_domain == 'api.bgm.tv':
+        tk = str(cfg.get("bgm", {}).get("Auth", ""))
+        headers.update({
+            'authorization': 'Bearer ' + tk,
+            'accept': 'application/json'
+        })
+    print(headers)
+    try:
+        response = requests.get(url=target_url, headers=headers)
+        print(response.text)
+        if response.headers.get('Content-Type', '').startswith('application/json'):
+            return jsonify(json.loads(response.text)), response.status_code
+        return response.content, response.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # @app.teardown_request

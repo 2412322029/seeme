@@ -37,8 +37,7 @@ def build_frontend_with_copy():
                     if asset_file.endswith(('.css', '.js')):
                         os.remove(os.path.join(asset_root, asset_file))
     print("Building frontend application...")
-    #  os.system(f'cd {Frontend_DIR} && npm run build')
-    subprocess.run(['npm', 'run', 'build'], cwd=Frontend_DIR, check=True)
+    os.system(f'cd {Frontend_DIR} && npm run build')
     print("Frontend application built successfully.")
     # 将Frontend_DIR/dist目录的内容复制到templates目录
     print("Copying dist content to templates directory...")

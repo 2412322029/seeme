@@ -6,10 +6,10 @@ from config import cfg
 
 
 def steam_info():
-    if not cfg.get("steam")["enable"]:
+    if not cfg.get("steam", {}).get("enable", ""):
         return {"steam_enable": False}
-    steam_id = cfg.get("steam")["steam_id"]
-    steam_key = cfg.get("steam")["steam_key"]
+    steam_id = cfg.get("steam", {}).get("steam_id", "")
+    steam_key = cfg.get("steam", {}).get("steam_key", "")
     resp = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
                         f"?key={steam_key}&steamids={steam_id}")
     if resp.status_code == 200:
@@ -20,10 +20,10 @@ def steam_info():
 
 @functools.lru_cache(maxsize=2)
 def steam_friend_list(ret_ids=False, t=None):
-    if not cfg.get("steam")["enable"]:
+    if not cfg.get("steam", {}).get("enable", ""):
         return {"steam_enable": False}
-    steam_id = cfg.get("steam")["steam_id"]
-    steam_key = cfg.get("steam")["steam_key"]
+    steam_id = cfg.get("steam", {}).get("steam_id", "")
+    steam_key = cfg.get("steam", {}).get("steam_key", "")
     print(f'steam_friend_list {t}')
     resp = requests.get(f"https://api.steampowered.com/ISteamUser/GetFriendList/v1/"
                         f"?key={steam_key}&steamid={steam_id}#t")
@@ -43,9 +43,9 @@ steam_ids = steam_friend_list(ret_ids=True)
 
 
 def steam_friend_info():
-    if not cfg.get("steam")["enable"]:
+    if not cfg.get("steam", {}).get("enable", ""):
         return {"steam_enable": False}
-    steam_key = cfg.get("steam")["steam_key"]
+    steam_key = cfg.get("steam", {}).get("steam_key", "")
     resp = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/"
                         f"?key={steam_key}&steamids={steam_ids}")
     if resp.status_code == 200:

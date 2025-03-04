@@ -1,4 +1,4 @@
-SECRET_KEY = "seeme"
+SECRET_KEY = ""
 #
 without_redis = false
 
@@ -13,6 +13,13 @@ browser = 20
 phone = 20
 
 [steam]
-enable = false
+enable = true
 steam_id = 76561199077836301
 steam_key = ""
+
+[bgm]
+Auth = ""
+
+[openai]
+base_url = "https://api.uniapi.io/v1"
+api_key = "sk-xxx"
