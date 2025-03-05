@@ -2,15 +2,16 @@ import json
 import os
 import re
 import time
-import requests
-from flask import Flask, Response, render_template, request, jsonify, send_from_directory
 from urllib.parse import urlparse
 
+import requests
+from flask import Flask, Response, render_template, request, jsonify, send_from_directory
+
+from ai import completion_api, del_cache
 from config import SECRET_KEY, cfg
 from mcinfo import mcinfo, mclatency
 from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
     set_data, get_data
-from ai import completion_api, del_cache
 from steamapi import steam_info, steam_friend_list, steam_friend_info
 
 app = Flask(__name__)
@@ -249,8 +250,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-03-03 23:51:57",
-        "git_hash": "d009bfc"
+        "deploy_time": "2025-03-04 16:51:05",
+        "git_hash": "8336df8"
     }
     return jsonify(deployment_info), 200
 

@@ -1,1 +1,0 @@
-import{Y as o,$ as s,a4 as t,a5 as l,a1 as n,X as u,a6 as f,bL as d}from"./index-C-2t4lpF.js";const e={class:"not-found"},c={__name:"NotFound",setup:m=>(r,a)=>(u(),o("div",e,[a[1]||(a[1]=s("h1",null,"404 - 页面未找到",-1)),a[2]||(a[2]=s("p",null,"抱歉，您访问的页面不存在。",-1)),t(n(d),{to:"/"},{default:l(()=>a[0]||(a[0]=[f("返回首页")])),_:1})]))};export{c as default};

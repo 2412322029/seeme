@@ -4,8 +4,9 @@ import time
 import traceback
 
 from openai import OpenAI
-from rediscache import r, get_all_types_data
+
 from config import cfg
+from rediscache import r, get_all_types_data
 
 client = OpenAI(
     base_url=cfg.get("openai", {}).get("base_url", ""),
@@ -52,12 +53,14 @@ def completion_api():
         response_data = json.loads(cached_response)
         generated_at = response_data["generated_at"]
         data = response_data["data"]
-        #print(data)
+
+        # print(data)
         def stream():
             yield f"data: [cached at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(generated_at))}]<br>\n\n"
             for chunk in data.split("\n"):
                 if chunk:
-                    yield f"data: {chunk.replace('\n','')}\n\n"
+                    chunk = chunk.replace('\n', '')  # 先处理换行符
+                    yield f"data: {chunk}\n\n"
             yield f"event: end"
 
         return stream()

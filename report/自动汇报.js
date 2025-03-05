@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         自动汇报
-// @namespace    http://tampermonkey.net/
-// @version      0.2
-// @description  try to take over the world!
-// @author       You
+// @namespace    https://github.com/2412322029/seeme
+// @version      0.3
+// @description  自动汇报
+// @author       2412322029@qq.com
 // @match        http://*/*
 // @match        https://*/*
 // @updateURL    https://raw.githubusercontent.com/2412322029/seeme/master/report/%E8%87%AA%E5%8A%A8%E6%B1%87%E6%8A%A5.js
@@ -21,7 +21,7 @@
     const API_URL = GM_getValue('API_URL', '');
     const SECRET = GM_getValue('SECRET', '');
     //console.log(API_URL,SECRET)
-    // 注册菜单
+     // 注册菜单
     GM_registerMenuCommand('显示/重置 API_URL 和 SECRET', function() {
         // 显示当前值
         const message = `API_URL: ${API_URL}\nSECRET: ${SECRET}\n\n是否要重置这些值？`;
@@ -94,18 +94,49 @@
         GM_setValue('lastReport', lastReport);
     }
 
+    function applyStyles(element, styles) {
+        Object.assign(element.style, styles);
+    }
+
+    const commonStyles = {
+        // 通用样式
+        fixedCenter: {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+        },
+        darkBg: {
+            backgroundColor: '#1a1a1a',
+            color: '#ffffff',
+        },
+        buttonBase: {
+            backgroundColor: '#007bff',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+        },
+        inputBase: {
+            backgroundColor: '#333',
+            color: '#ffffff',
+            padding: '10px',
+            border: '1px solid #555',
+            borderRadius: '4px',
+            fontSize: '16px',
+        }
+    };
 
     function showAlert(message) {
         const alertBox = document.createElement('div');
-        alertBox.style.position = 'fixed';
-        alertBox.style.top = '50%';
-        alertBox.style.left = '50%';
-        alertBox.style.transform = 'translate(-50%, -50%)';
-        alertBox.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        alertBox.style.color = 'white';
-        alertBox.style.padding = '10px';
-        alertBox.style.borderRadius = '5px';
-        alertBox.style.zIndex = '10001';
+        applyStyles(alertBox, {
+            ...commonStyles.fixedCenter,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '5px',
+            zIndex: '2147483647',
+        });
         alertBox.textContent = message;
 
         document.body.appendChild(alertBox);
@@ -114,31 +145,38 @@
         setTimeout(() => {
             alertBox.remove();
         }, 3000);
-        console.log(message)
+        console.log(message);
     }
 
+    let modalInstance = null;
+
     function createModal() {
+        if (modalInstance) {
+            modalInstance.style.display = 'block';
+            return modalInstance;
+        }
+
         const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        modal.style.zIndex = '10002';
-        modal.style.display = 'none';
+        applyStyles(modal, {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            zIndex: '2147483647',
+            display: 'none',
+        });
 
         const modalContent = document.createElement('div');
-        modalContent.style.position = 'absolute';
-        modalContent.style.top = '50%';
-        modalContent.style.left = '50%';
-        modalContent.style.transform = 'translate(-50%, -50%)';
-        modalContent.style.backgroundColor = 'white';
-        modalContent.style.padding = '20px';
-        modalContent.style.borderRadius = '5px';
-        modalContent.style.width = '500px';
-
-
+        applyStyles(modalContent, {
+            ...commonStyles.fixedCenter,
+            ...commonStyles.darkBg,
+            padding: '20px',
+            borderRadius: '8px',
+            width: '500px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+        });
 
         const titleLabel = document.createElement('label');
         titleLabel.textContent = '标题:';
@@ -152,31 +190,70 @@
         urlInput.value = window.location.href.split('?')[0];
 
         const confirmButton = document.createElement('button');
-        confirmButton.textContent = '确认上传';
-        confirmButton.addEventListener('click', () => {
+        confirmButton.textContent = '确认上传 [Enter]';
+
+        const handleConfirm = () => {
             sendRequest(titleInput.value, urlInput.value);
             modal.style.display = 'none';
+        };
+
+        confirmButton.addEventListener('click', handleConfirm);
+
+        // 添加回车键监听
+        modal.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                handleConfirm();
+            } else if (event.key === 'Escape') {
+                modal.style.display = 'none';
+            }
         });
+
         const closeButton = document.createElement('button');
-        closeButton.textContent = '关闭';
-        closeButton.style.position = 'absolute';
-        closeButton.style.right = '10px';
+        closeButton.textContent = '×';
         closeButton.addEventListener('click', () => {
             modal.style.display = 'none';
         });
-        titleInput.style.width = '80%';
-        titleInput.style.padding = '10px';
-        titleInput.style.margin = '6px';
-        titleInput.style.border = '2px solid #ccc';
-        titleInput.style.borderRadius = '4px';
-        titleInput.style.fontSize = '16px';
 
-        urlInput.style.width = '80%';
-        urlInput.style.padding = '10px';
-        urlInput.style.margin = '6px';
-        urlInput.style.border = '2px solid #ccc';
-        urlInput.style.borderRadius = '4px';
-        urlInput.style.fontSize = '16px';
+        // 输入框和标签样式
+        const inputStyles = {
+            ...commonStyles.inputBase,
+            width: '80%',
+            margin: '6px',
+        };
+
+        const labelStyles = {
+            color: '#ffffff',
+            marginRight: '10px',
+        };
+
+        [titleLabel, urlLabel].forEach(label => {
+            applyStyles(label, labelStyles);
+        });
+
+        [titleInput, urlInput].forEach(input => {
+            applyStyles(input, inputStyles);
+        });
+
+        // 按钮样式
+        applyStyles(confirmButton, {
+            ...commonStyles.buttonBase,
+            padding: '8px 16px',
+            marginTop: '10px',
+            float: 'right',
+        });
+
+        applyStyles(closeButton, {
+            position: 'absolute',
+            right: '10px',
+            top: '10px',
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: '#ffffff',
+            fontSize: '20px',
+            cursor: 'pointer',
+            padding: '10px',
+        });
 
         modalContent.appendChild(titleLabel);
         modalContent.appendChild(titleInput);
@@ -189,34 +266,23 @@
         modal.appendChild(modalContent);
         document.body.appendChild(modal);
 
+        modalInstance = modal;
         return modal;
     }
 
-    const button = document.createElement('button');
-    button.textContent = '↑';
-    button.id = 'custom-upload-button';
-    button.style.position = 'fixed';
-    button.style.top = '10px';
-    button.style.right = '10px';
-    button.style.width = '60px';
-    button.style.height = '30px';
-    button.style.fontSize = '12px';
-    button.style.zIndex = '10000';
-    button.style.backgroundColor = '#007bff';
-    button.style.color = 'white';
-    button.style.border = 'none';
-    button.style.borderRadius = '5px';
-    button.style.cursor = 'pointer';
-    button.style.outline = 'none';
-    button.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
-
-    button.addEventListener('click', () => {
-        const modal = createModal();
-        modal.style.display = 'block';
+    // Alt + 1 打开模态框
+    document.addEventListener('keydown', function(event) {
+        if (event.altKey && event.key === '1') {
+            event.preventDefault();
+            if (modalInstance && modalInstance.style.display === 'block') {
+                modalInstance.style.display = 'none';
+            } else {
+                const modal = createModal();
+                modal.style.display = 'block';
+                // 自动聚焦到标题输入框
+                // modal.querySelector('input').focus();
+            }
+        }
     });
-    button.addEventListener('contextmenu', (event) => {
-        event.preventDefault();
-        button.style.display = 'none';
-    })
-    document.body.appendChild(button);
+
 })();
