@@ -41,7 +41,7 @@ def is_valid_address(address: str) -> bool:
 @app.route('/get_mcinfo/<address>')
 def get_mcinfo(address: str):
     if is_valid_address(address):
-        return mcinfo(address)
+        return jsonify(mcinfo(address)), 200
     else:
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
@@ -49,7 +49,7 @@ def get_mcinfo(address: str):
 @app.route('/get_mclatency/<address>')
 def get_mclatency(address: str):
     if is_valid_address(address):
-        return mclatency(address)
+        return jsonify(mclatency(address)), 200
     else:
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
@@ -250,8 +250,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-03-04 16:51:05",
-        "git_hash": "8336df8"
+        "deploy_time": "2025-03-05 16:17:47",
+        "git_hash": "5249031"
     }
     return jsonify(deployment_info), 200
 

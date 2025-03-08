@@ -14,7 +14,7 @@ def JavaStatusPlayer2list(j: list[JavaStatusPlayer] | None):
 
 
 def JavaStatusResponse2json(s: JavaStatusResponse):
-    json_str = json.dumps({
+    json_str = {
         "version": {
             "name": s.version.name,
             "protocol": s.version.protocol
@@ -29,26 +29,26 @@ def JavaStatusResponse2json(s: JavaStatusResponse):
             "html": s.motd.to_html()
         },
         "icon": s.icon
-    }, indent=4)
+    }
     return json_str
 
 
-def mcinfo(address: str) -> str | dict:
+def mcinfo(address: str) -> dict:
     try:
         server = JavaServer.lookup(address)
         status = server.status()
         return JavaStatusResponse2json(status)
     except Exception as e:
-        return str(e)
+        return {"error": f"{str(e)}"}
 
 
 def mclatency(address: str):
     try:
         server = JavaServer.lookup(address)
         latency = server.ping()
-        return f"{int(latency)} ms"
+        return {"time": f"{int(latency)} ms"}
     except Exception as e:
-        return str(e)
+        return {"error": f"{str(e)}"}
 
 
 if __name__ == '__main__':

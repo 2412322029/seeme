@@ -145,18 +145,22 @@ def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     finally:
         conn.close()
 
-try:
-    if input("build the frontend application? (y/n): ").lower() == 'y':
-        build_frontend_with_copy()
-    if input("upload files to the remote server? (y/n): ").lower() == 'y':
-        DEPLOY_TIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        GIT_HASH = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()
-        update_deployment_info(DEPLOY_TIME, GIT_HASH)
-        upload_files()
-        print("wait for the server to restart...")
-        time.sleep(5)
-        verify_deployment_info(DEPLOY_TIME, GIT_HASH)
-except Exception as e:
-    print(f"An error occurred during deployment: {e}")
-    traceback.print_exc()
-    exit(1)
+def main():
+    try:
+        if input("build the frontend application? (y/n): ").lower() == 'y':
+            build_frontend_with_copy()
+        if input("upload files to the remote server? (y/n): ").lower() == 'y':
+            DEPLOY_TIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            GIT_HASH = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()
+            update_deployment_info(DEPLOY_TIME, GIT_HASH)
+            upload_files()
+            print("wait for the server to restart...")
+            time.sleep(5)
+            verify_deployment_info(DEPLOY_TIME, GIT_HASH)
+    except Exception as e:
+        print(f"An error occurred during deployment: {e}")
+        traceback.print_exc()
+        exit(1)
+
+if __name__ == "__main__":
+    main()
