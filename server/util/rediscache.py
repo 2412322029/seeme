@@ -1,4 +1,4 @@
-from mycache import MyCache
+from util.mycache import MyCache
 import json
 from config import cfg
 

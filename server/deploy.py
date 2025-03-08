@@ -87,6 +87,13 @@ def upload_files():
                     print(f"Uploading {filename} to {REMOTE_DIR}/{filename}...", end=' ')
                     conn.put(filename, REMOTE_DIR)
                     print(f"Uploaded {filename} successfully.")
+        # 上传util目录中的文件
+        for filename in os.listdir('./util'):
+            if os.path.isfile(filename):
+                if any(filename.endswith(ext) for ext in FILE_TYPES):
+                    print(f"Uploading {filename} to {REMOTE_DIR}/{filename}...", end=' ')
+                    conn.put(filename, REMOTE_DIR)
+                    print(f"Uploaded {filename} successfully.")
         # 上传 templates/index.html
         local_index_path = "templates/index.html"
         remote_index_path = f"{REMOTE_DIR}/templates/"
@@ -124,7 +131,7 @@ def upload_files():
 def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     try:
         # 创建 HTTP 连接
-        conn = http.client.HTTPConnection(REMOTE_HOST, port=80)
+        conn = http.client.HTTPConnection(REMOTE_HOST, port=443)
         conn.request("GET", "/get_deployment_info")
         response = conn.getresponse()
         

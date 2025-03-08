@@ -6,7 +6,7 @@ import traceback
 from openai import OpenAI
 
 from config import cfg
-from rediscache import r, get_all_types_data
+from util.rediscache import r, get_all_types_data
 
 client = OpenAI(
     base_url=cfg.get("openai", {}).get("base_url", ""),

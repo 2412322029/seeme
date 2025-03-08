@@ -7,12 +7,12 @@ from urllib.parse import urlparse
 import requests
 from flask import Flask, Response, render_template, request, jsonify, send_from_directory
 
-from ai import completion_api, del_cache
+from util.ai import completion_api, del_cache
 from config import SECRET_KEY, cfg
-from mcinfo import mcinfo, mclatency
-from rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
+from util.mcinfo import mcinfo, mclatency
+from util.rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
     set_data, get_data
-from steamapi import steam_info, steam_friend_list, steam_friend_info
+from util.steamapi import steam_info, steam_friend_list, steam_friend_info
 
 app = Flask(__name__)
 UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon")
@@ -250,8 +250,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-03-05 16:17:47",
-        "git_hash": "5249031"
+        "deploy_time": "2025-03-09 00:37:32",
+        "git_hash": "deb3962"
     }
     return jsonify(deployment_info), 200
 
