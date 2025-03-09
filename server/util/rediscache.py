@@ -1,6 +1,7 @@
-from util.mycache import MyCache
 import json
-from config import cfg
+
+from .config import cfg
+from .mycache import MyCache
 
 if cfg.get("without_redis"):
     r = MyCache()

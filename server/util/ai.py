@@ -5,8 +5,8 @@ import traceback
 
 from openai import OpenAI
 
-from config import cfg
-from util.rediscache import r, get_all_types_data
+from .config import cfg
+from .rediscache import r, get_all_types_data
 
 client = OpenAI(
     base_url=cfg.get("openai", {}).get("base_url", ""),
@@ -42,8 +42,8 @@ def gen_prompt():
     return s
 
 
-def completion_api():
-    prompt = gen_prompt()
+def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过400字"
+                                            "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条)"):
     if cfg.get("without_redis"):
         return (i for i in [f"data: without_redis no cache!\n\n"])
     cache_key = 'openai_response:' + hashlib.md5(prompt.encode()).hexdigest()
@@ -76,8 +76,7 @@ def completion_api():
                     model="gpt-4o-mini",
                     messages=[{
                         "role": "system",
-                        "content": "你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过400字"
-                                   "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条)"
+                        "content": tip
                     }, {
                         "role": "user",
                         "content": prompt

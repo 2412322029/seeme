@@ -2,8 +2,7 @@ import os
 
 import toml
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-# data_file = os.path.join(script_dir, 'data.json')
+script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 cfg_path = os.path.join(script_dir, "config.toml")
 if not os.path.exists(cfg_path):
     raise FileNotFoundError("config.toml not found")

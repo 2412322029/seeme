@@ -8,10 +8,10 @@ import requests
 from flask import Flask, Response, render_template, request, jsonify, send_from_directory
 
 from util.ai import completion_api, del_cache
-from config import SECRET_KEY, cfg
+from util.config import SECRET_KEY, cfg
 from util.mcinfo import mcinfo, mclatency
-from util.rediscache import put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit, del_data, \
-    set_data, get_data
+from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types,
+                             get_all_types_data, set_limit, del_data, set_data, get_data)
 from util.steamapi import steam_info, steam_friend_list, steam_friend_info
 
 app = Flask(__name__)
@@ -19,12 +19,13 @@ UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon
 os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
 
 
-# TODO
 # @app.before_request
 # def force_https():
 #     if request.url.startswith('http://'):
 #         url = request.url.replace('http://', 'https://', 1)
 #         return redirect(url, code=301)
+
+
 @app.after_request
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'  # 允许所有域
@@ -269,9 +270,9 @@ def del_ai_cache():
         return str(e)
 
 
-@app.route('/proxy/<path:url>', methods=['GET'])
-def proxy(url):
-    target_url = url
+@app.route('/proxy', methods=['GET'])
+def proxy():
+    target_url = request.args.get('url')
     if not target_url:
         return jsonify({'error': 'Target URL is required'}), 400
 
@@ -289,23 +290,22 @@ def proxy(url):
             'authorization': 'Bearer ' + tk,
             'accept': 'application/json'
         })
-    print(headers)
     try:
-        response = requests.get(url=target_url, headers=headers)
-        print(response.text)
+        response = requests.get(url=target_url, headers=headers, timeout=5)
         if response.headers.get('Content-Type', '').startswith('application/json'):
             return jsonify(json.loads(response.text)), response.status_code
         return response.content, response.status_code
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# @app.teardown_request
-# def teardown_request(response_or_error):
-#     save_data(data)
-#     save_cfg()
-#     return response_or_error
+        return jsonify({'error': str(e)}), 400
 
 
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", port=5000)
+    from wsgiref.simple_server import make_server
+
+    httpd = make_server('0.0.0.0', 5000, app)
+    print('Serving HTTP on port 5000...')
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("stop ")
+        httpd.server_close()
