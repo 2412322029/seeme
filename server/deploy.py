@@ -1,13 +1,15 @@
-import shutil
-import subprocess
 import http.client
-import traceback
 import json
-import time
 import os
 import re
+import shutil
+import subprocess
+import time
+import traceback
+
 from dotenv import load_dotenv
 from fabric import Connection
+
 # 加载.env文件中的配置
 load_dotenv()
 
@@ -131,7 +133,7 @@ def upload_files():
 def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     try:
         # 创建 HTTP 连接
-        conn = http.client.HTTPConnection(REMOTE_HOST, port=443)
+        conn = http.client.HTTPConnection("https://i.not404.cc", port=443)
         conn.request("GET", "/get_deployment_info")
         response = conn.getresponse()
         
