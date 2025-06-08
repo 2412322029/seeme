@@ -65,7 +65,7 @@ def check_process(pf, check_pause=True, pt=True):
     try:
         pid = read_pid(pf)
         info["pid"] = pid
-        ifPrint(f"pid(file)   :{pid}", IF=pt)
+        ifPrint(f"pid(file)   : {pid}", IF=pt)
         if is_process_running(pid):
             process = psutil.Process(pid)
             info["status"] = process.status()
@@ -76,15 +76,15 @@ def check_process(pf, check_pause=True, pt=True):
             info["create_time"] = (f"{create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
                                    f"({timeAgo(create_time)} ago)")
             ifPrint(f"status      : \033[92m{info['status']}\033[0m", IF=pt)
-            ifPrint(f"mem(rs     ): {info['memory']} MB", IF=pt)
+            ifPrint(f"mem(rss)    : {info['memory']} MB", IF=pt)
             ifPrint(f"cmdline     : {info['cmdline']}", IF=pt)
             ifPrint(f"create time : {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
-                    f"(\033[92m{timeAgo(create_time)}\033[0m ago)", IF=pt)
+                    f"(\033[92m{timeAgo(create_time)} ago\033[0m)", IF=pt)
             if os.path.exists(pause_file) and check_pause:
                 info["status"] = "paused"
                 getctime = datetime.fromtimestamp(os.path.getctime(pause_file))
                 info["paused"] = f"{getctime} ({timeAgo(getctime).strip()} ago!)"
-                ifPrint(f"The process was paused at  {getctime} (\033[91m{timeAgo(getctime).strip()}\033[0m ago!)",
+                ifPrint(f"The process was paused at  {getctime} (\033[91m{timeAgo(getctime).strip()} ago!\033[0m)",
                         IF=pt)
         else:
             info["status"] = "stop"

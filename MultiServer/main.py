@@ -2,16 +2,13 @@ import json
 import os
 import re
 import time
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-import requests
-from flask import Flask, Response, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
-from util.ai import completion_api, del_cache
-from util.config import SECRET_KEY, cfg
+from util.config import SECRET_KEY
 from util.mcinfo import mcinfo, mclatency
-from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types, r,
-                             get_all_types_data, set_limit, del_data, set_data, get_data)
+from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types, get_all_types_data, set_limit,
+                             del_data, set_data, get_data)
 from util.steamapi import steam_info, steam_friend_list, steam_friend_info
 
 app = Flask(__name__)
@@ -256,88 +253,6 @@ def get_deployment_info():
     }
     return jsonify(deployment_info), 200
 
-
-@app.route('/ai_summary', methods=['GET'])
-def ai_summary():
-    return Response(completion_api(), mimetype="text/event-stream")
-
-
-@app.route('/del_ai_cache', methods=['GET'])
-def del_ai_cache():
-    try:
-        return f'已删除{del_cache()}条'
-    except Exception as e:
-        return str(e)
-
-
-@app.route('/del_xlog_cache', methods=['GET'])
-def del_xlog_cache():
-    try:
-        return f'已删除{r.delete("xlog")}'
-    except Exception as e:
-        return str(e)
-
-
-@app.route('/proxy_xlog', methods=['GET'])
-def proxy_xlog():
-    p = os.path.join(os.path.dirname(__file__), "data.json")
-    with open(p, "r", encoding="utf8") as f:
-        return Response(f.read(), mimetype='application/json')
-    # if r.exists("xlog"):
-    #     return jsonify(json.loads(r.get("xlog"))), 200
-    # response = requests.get(url="https://xlog.not404.cc/api/pages?characterId=50877&type=post&"
-    #                           "type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest", timeout=10)
-    # if response.status_code == 200:
-    #     r.set("xlog", json.dumps(response.json()), ex=3600 * 24)
-    # da = response.json()
-    # if da.get('count', 0) == 0:
-    #     print("ff")
-    #     return jsonify(json.loads(data)), 200
-    # else:
-    #     return response.json()
-
-
-@app.route('/proxy', methods=['GET'])
-def proxy():
-    target_url = request.args.get('url')
-    if not target_url:
-        return jsonify({'error': 'Target URL is required'}), 400
-
-    # 验证 URL 格式
-    parsed_url = urlparse(target_url)
-    if parsed_url.scheme not in ['http', 'https']:
-        return jsonify({'error': 'Invalid URL scheme'}), 400
-
-    target_domain = parsed_url.netloc
-    headers = dict(request.headers)
-    headers['Host'] = target_domain
-    headers['Accept-Encoding'] = 'identity'  # 禁用 gzip 编码，避免处理压缩内容
-    if target_domain == 'api.bgm.tv':
-        tk = str(cfg.get("bgm", {}).get("Auth", ""))
-        headers.update({
-            'Authorization': 'Bearer ' + tk
-        })
-    # 获取原始请求的查询参数（包括 url 参数和其他参数）
-    query_params = parse_qs(request.query_string.decode('utf-8'))
-    query_params.pop('url', None)
-    # 将剩余的参数重新编码为查询字符串
-    additional_query_string = urlencode(query_params, doseq=True)
-    if additional_query_string:
-        target_url = urlunparse(parsed_url._replace(query=additional_query_string))
-    try:
-        response = requests.get(url=target_url, headers=headers, stream=True, timeout=10)
-        resp = Response(response.iter_content(chunk_size=1024), status=response.status_code)
-        # 过滤掉跳到跳头部
-        hop_by_hop_headers = [
-            'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
-            'te', 'trailer', 'transfer-encoding', 'upgrade'
-        ]
-        for header, value in response.headers.items():
-            if header.lower() not in hop_by_hop_headers:
-                resp.headers[header] = value
-        return resp
-    except requests.RequestException as e:
-        return jsonify({'error': str(e)}), 400
 
 
 if __name__ == '__main__':

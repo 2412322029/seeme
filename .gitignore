@@ -9,3 +9,5 @@ report/update.exe
 server/app.pid
 server/config.toml
 server/manifest.json
+MultiServer/
+MultiServer/main.py
