@@ -123,10 +123,12 @@ def upload_files():
             print("Failed to change ownership.")
          # 重新加载 uWSGI 应用
         print("Reloading uWSGI application...")
-        if conn.run(f"uwsgi --reload {REMOTE_DIR}/app.pid").ok:
-            print("uWSGI application reloaded successfully.")
+        if conn.run(f"kill -9 $(cat {REMOTE_DIR}/gunicorn.pid)").ok:
+            print("application killed successfully.")
+            if conn.run(f"{REMOTE_DIR}.venv/bin/python3 {REMOTE_DIR}.venv/bin/gunicorn -c {REMOTE_DIR}/gunicorn.conf.py main:app -D").ok:
+                print("application start successfully.")
         else:
-            print("Failed to reload uWSGI application.")
+            print("Failed to reload application.")
     print("All specified files have been uploaded.")
 
 

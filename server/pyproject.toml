@@ -1,4 +1,5 @@
 [project]
+package=false
 name = "seeme-server"
 version = "0.1.0"
 description = "seeme-server"
@@ -6,7 +7,6 @@ authors = [
     {name = "2412322029",email = "2412322029@qq.com"}
 ]
 license = {text = "MIT"}
-readme = "../README.md"
 requires-python = ">=3.10,<4"
 dependencies = [
     "flask (>=3.1.0,<4.0.0)",

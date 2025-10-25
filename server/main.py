@@ -280,21 +280,26 @@ def del_xlog_cache():
 
 @app.route('/proxy_xlog', methods=['GET'])
 def proxy_xlog():
-    p = os.path.join(os.path.dirname(__file__), "data.json")
-    with open(p, "r", encoding="utf8") as f:
-        return Response(f.read(), mimetype='application/json')
-    # if r.exists("xlog"):
-    #     return jsonify(json.loads(r.get("xlog"))), 200
-    # response = requests.get(url="https://xlog.not404.cc/api/pages?characterId=50877&type=post&"
-    #                           "type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest", timeout=10)
-    # if response.status_code == 200:
-    #     r.set("xlog", json.dumps(response.json()), ex=3600 * 24)
-    # da = response.json()
-    # if da.get('count', 0) == 0:
-    #     print("ff")
-    #     return jsonify(json.loads(data)), 200
-    # else:
-    #     return response.json()
+    print("XLOG")
+    # p = os.path.join(os.path.dirname(__file__), "data.json")
+    # with open(p, "r", encoding="utf8") as f:
+    #     return Response(f.read(), mimetype='application/json')
+    if r.exists("xlog"):
+        # ADD HEADER TO SHOW CACHE HIT
+        resp = jsonify(json.loads(r.get("xlog")))
+        resp.headers['X-Cache'] = 'HIT'
+        return resp, 200
+    try:
+        response = requests.get(url="https://xlog.not404.cc/api/pages?characterId=50877&type=post&"
+                                "type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest", timeout=10)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    if response.status_code == 200:
+        # 缓存1天
+        r.set("xlog", json.dumps(response.json()), ex=3600 * 24)
+    else:
+        return jsonify({"error": "Failed to fetch data"}), 500
+    return response.json()
 
 
 @app.route('/proxy', methods=['GET'])
@@ -338,6 +343,9 @@ def proxy():
         return resp
     except requests.RequestException as e:
         return jsonify({'error': str(e)}), 400
+
+#评论
+
 
 
 if __name__ == '__main__':
