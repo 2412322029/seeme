@@ -13,7 +13,7 @@ from util.mcinfo import mcinfo, mclatency
 from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types, r,
                              get_all_types_data, set_limit, del_data, set_data, get_data)
 from util.steamapi import steam_info, steam_friend_list, steam_friend_info
-
+from sum import generate_sum_txt, sum_file_path
 app = Flask(__name__)
 UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon")
 os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
@@ -251,8 +251,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-06-01 12:19:48",
-        "git_hash": "2a0bbf3"
+        "deploy_time": "2025-10-25 17:00:09",
+        "git_hash": "a174656"
     }
     return jsonify(deployment_info), 200
 
@@ -344,13 +344,49 @@ def proxy():
     except requests.RequestException as e:
         return jsonify({'error': str(e)}), 400
 
-#评论
+# @app.route('/generate_filesum', methods=['POST'])
+# def generate_filesum(): 
+#     key = request.headers.get('API-KEY')
+#     if key != SECRET_KEY:
+#         return jsonify({"error": "Invalid key"}), 403
+#     try:
+#         generate_sum_txt()
+#         return jsonify({"message": "sum.txt generated successfully"}), 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
+# @app.route('/get_filesum', methods=['GET'])
+# def get_filesum():
+#     key = request.headers.get('API-KEY')
+#     if key != SECRET_KEY:
+#         return jsonify({"error": "Invalid key"}), 403
+#     try:
+#         # ensure the summary file exists, generate if missing
+#         if not os.path.exists(sum_file_path):
+#             generate_sum_txt()
+#             # wait briefly for generation (in case it's async or slow)
+#             for _ in range(50):  # up to ~5s
+#                 if os.path.exists(sum_file_path):
+#                     break
+#                 time.sleep(0.1)
+
+#         if not os.path.exists(sum_file_path):
+#             return jsonify({"error": "Failed to generate summary file"}), 500
+
+#         with open(sum_file_path, 'r', encoding='utf-8') as f:
+#             content = f.read()
+
+#         resp = Response(content, mimetype='text/plain')
+#         resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+#         return resp, 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
     app.run("0.0.0.0", 5000)
     # from wsgiref.simple_server import make_server
+
 
     # httpd = make_server('0.0.0.0', 5000, app)
     # print('Serving HTTP on port 5000...')

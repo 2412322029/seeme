@@ -9,7 +9,7 @@ import traceback
 
 from dotenv import load_dotenv
 from fabric import Connection
-
+from sum import compare_sum_txt
 # 加载.env文件中的配置
 load_dotenv()
 
@@ -73,30 +73,16 @@ def update_deployment_info(DEPLOY_TIME, GIT_HASH):
 # 本地文件类型
 FILE_TYPES = ['.py', '.js', '.html', '.css']
 
-def upload_files():
-    with Connection(host=REMOTE_HOST, user=REMOTE_USER, port=REMOTE_PORT) as conn:
+def upload_frontend_files():
+     with Connection(host=REMOTE_HOST, user=REMOTE_USER, port=REMOTE_PORT) as conn:    
         conn.run(f"mkdir -p {REMOTE_DIR}")
-        # 删除远程目录下的 html, css 和 js 文件
+       # 删除远程目录下的 html, css 和 js 文件
         print("Deleting existing html, css and js files in remote directory...")
         if conn.run(f"rm -f {REMOTE_DIR}/templates/assets/*.css {REMOTE_DIR}/templates/assets/*.js {REMOTE_DIR}/templates/index.html"):
             print("Deleted existing files successfully.")
         else:   
             print("Failed to delete existing files.")
-        # 上传.目录中的文件
-        for filename in os.listdir('.'):
-            if os.path.isfile(filename):
-                if any(filename.endswith(ext) for ext in FILE_TYPES):
-                    print(f"Uploading {filename} to {REMOTE_DIR}/{filename}...", end=' ')
-                    conn.put(filename, REMOTE_DIR)
-                    print(f"Uploaded {filename} successfully.")
-        # 上传util目录中的文件
-        for filename in os.listdir('./util'):
-            if os.path.isfile(filename):
-                if any(filename.endswith(ext) for ext in FILE_TYPES):
-                    print(f"Uploading {filename} to {REMOTE_DIR}/{filename}...", end=' ')
-                    conn.put(filename, REMOTE_DIR)
-                    print(f"Uploaded {filename} successfully.")
-        # 上传 templates/index.html
+                 # 上传 templates/index.html
         local_index_path = "templates/index.html"
         remote_index_path = f"{REMOTE_DIR}/templates/"
         if os.path.isfile(local_index_path):
@@ -115,20 +101,74 @@ def upload_files():
                 conn.put(local_file_path, remote_file_path)
                 print(f"Uploaded {filename} successfully.")
 
+def upload_files():
+    with Connection(host=REMOTE_HOST, user=REMOTE_USER, port=REMOTE_PORT) as conn:
+        conn.run(f"mkdir -p {REMOTE_DIR}") 
+        try:
+            only_local, only_remote, different = compare_sum_txt()
+            if only_local is None:
+                print("Comparison of checksums failed. Aborting upload.")
+                return
+        except Exception as e:
+            print(f"Error computing checksum differences: {e}")
+            traceback.print_exc()
+            return
+
+        # 上传本地有但远程没有的文件，或者本地和远程hash不同的文件
+        files_to_upload = set(only_local).union(set(different))
+        input("Press Enter to continue uploading the following files:\n" + "\n".join(files_to_upload))
+        if not files_to_upload:
+            print("No files to upload.")
+        for relative_path in files_to_upload:
+            local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
+            if not os.path.exists(local_path):
+                print(f"Local file does not exist, skipping: {local_path}")
+                continue
+            if os.path.isdir(local_path):
+                print(f"Local path is a directory, skipping: {local_path}")
+                continue
+
+            remote_path = f"{REMOTE_DIR}/{relative_path.replace(os.sep, '/')}"
+            remote_dir = os.path.dirname(remote_path)
+
+            # 远程路径中包含单引号时需要转义
+            remote_dir_escaped = remote_dir.replace("'", "'\"'\"'")
+
+            print(f"Uploading {local_path} to {remote_path}...", end=' ')
+            try:
+                mkdir_res = conn.run(f"mkdir -p '{remote_dir_escaped}'", hide=True, warn=True)
+                if not mkdir_res.ok:
+                    print(f"\nWarning: failed to create remote dir {remote_dir} (continuing).")
+            except Exception as e:
+                print(f"\nError creating remote directory {remote_dir}: {e}")
+            # 尝试继续上传，可能会失败
+            # 尝试上传，最多重试3次
+            success = False
+            for attempt in range(1, 4):
+                try:
+                    conn.put(local_path, remote_path)
+                    print("√")
+                    success = True
+                    break
+                except Exception as e:
+                    print(f"\nUpload attempt {attempt} failed for {relative_path}: {e}")
+                    if attempt < 3:
+                        time.sleep(1)
+                    else:
+                        traceback.print_exc()
+            if not success:
+                print(f"Failed to upload {relative_path} after retries.")
+            continue
+
         # 更改远程目录的所有权
         print("Changing ownership of remote directory...")
         if conn.sudo(f"chown -R www-data:www-data {REMOTE_DIR}").ok:
             print("Ownership changed successfully.")
         else:
             print("Failed to change ownership.")
-         # 重新加载 uWSGI 应用
-        print("Reloading uWSGI application...")
-        if conn.run(f"kill -9 $(cat {REMOTE_DIR}/gunicorn.pid)").ok:
-            print("application killed successfully.")
-            if conn.run(f"{REMOTE_DIR}.venv/bin/python3 {REMOTE_DIR}.venv/bin/gunicorn -c {REMOTE_DIR}/gunicorn.conf.py main:app -D").ok:
-                print("application start successfully.")
-        else:
-            print("Failed to reload application.")
+         # 重新加载 应用
+        if conn.run(f"{REMOTE_DIR}/restart.sh").ok:
+            print("application start successfully.")
     print("All specified files have been uploaded.")
 
 
@@ -157,6 +197,7 @@ def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
         conn.close()
 
 def main():
+    # ...
     try:
         if input("build the frontend application? (y/n): ").lower() == 'y':
             build_frontend_with_copy()
