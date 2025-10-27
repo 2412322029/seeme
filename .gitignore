@@ -11,3 +11,4 @@ server/config.toml
 server/manifest.json
 MultiServer/
 MultiServer/main.py
+server/util/GeoLite2-City.mmdb

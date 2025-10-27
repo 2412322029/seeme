@@ -9,6 +9,7 @@ from flask import Flask, Response, render_template, request, jsonify, send_from_
 
 from util.ai import completion_api, del_cache
 from util.config import SECRET_KEY, cfg
+from util.ip import locateip
 from util.mcinfo import mcinfo, mclatency
 from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types, r,
                              get_all_types_data, set_limit, del_data, set_data, get_data)
@@ -251,8 +252,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-10-25 17:00:09",
-        "git_hash": "a174656"
+        "deploy_time": "2025-10-27 18:54:30",
+        "git_hash": "2da9d2c"
     }
     return jsonify(deployment_info), 200
 
@@ -280,7 +281,6 @@ def del_xlog_cache():
 
 @app.route('/proxy_xlog', methods=['GET'])
 def proxy_xlog():
-    print("XLOG")
     # p = os.path.join(os.path.dirname(__file__), "data.json")
     # with open(p, "r", encoding="utf8") as f:
     #     return Response(f.read(), mimetype='application/json')
@@ -318,9 +318,8 @@ def proxy():
     headers['Host'] = target_domain
     headers['Accept-Encoding'] = 'identity'  # 禁用 gzip 编码，避免处理压缩内容
     if target_domain == 'api.bgm.tv':
-        tk = str(cfg.get("bgm", {}).get("Auth", ""))
         headers.update({
-            'Authorization': 'Bearer ' + tk
+            'Authorization': 'Bearer ' + str(cfg.get("bgm", {}).get("Auth", ""))
         })
     # 获取原始请求的查询参数（包括 url 参数和其他参数）
     query_params = parse_qs(request.query_string.decode('utf-8'))
@@ -344,43 +343,128 @@ def proxy():
     except requests.RequestException as e:
         return jsonify({'error': str(e)}), 400
 
-# @app.route('/generate_filesum', methods=['POST'])
-# def generate_filesum(): 
-#     key = request.headers.get('API-KEY')
-#     if key != SECRET_KEY:
-#         return jsonify({"error": "Invalid key"}), 403
-#     try:
-#         generate_sum_txt()
-#         return jsonify({"message": "sum.txt generated successfully"}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
 
-# @app.route('/get_filesum', methods=['GET'])
-# def get_filesum():
-#     key = request.headers.get('API-KEY')
-#     if key != SECRET_KEY:
-#         return jsonify({"error": "Invalid key"}), 403
-#     try:
-#         # ensure the summary file exists, generate if missing
-#         if not os.path.exists(sum_file_path):
-#             generate_sum_txt()
-#             # wait briefly for generation (in case it's async or slow)
-#             for _ in range(50):  # up to ~5s
-#                 if os.path.exists(sum_file_path):
-#                     break
-#                 time.sleep(0.1)
+# 留言功能api
+# 频率限制
+@app.route('/leave_message', methods=['POST'])
+def leave_message_route():
+    """
+    留言接口，先做 Google reCAPTCHA 校验（如果在 cfg 中配置了 recaptcha.secret），
+    然后走带 Redis 限频的处理逻辑。
+    期望前端传递：
+      - g-recaptcha-response 表单字段（reCAPTCHA v2），或
+      - recaptcha_token JSON 字段 / Recaptcha-Token header（reCAPTCHA v3）
+    """
+    recaptcha_cfg = cfg.get("recaptcha", {}) or {}
+    secret = recaptcha_cfg.get("secret", "")
+    if not secret:
+        return jsonify({"error": "未配置 recaptcha.secret"}), 400
+    token = (
+        request.form.get("g-recaptcha-response")
+        or (request.get_json(silent=True) or {}).get("recaptcha_token")
+        or request.headers.get("Recaptcha-Token")
+    )
+    if not token:
+        return jsonify({"error": "recaptcha token missing"}), 400
+    data = request.get_json(force=True, silent=True) or request.form or {}
+    name = (data.get("name") or "匿名").strip()
+    content = (data.get("content") or "").strip()
+    email = (data.get("email") or "").strip()
+    if not content:
+        return jsonify({"error": "content is required"}), 400
+    if len(content) > 2000:
+        return jsonify({"error": "content too long (max 2000 chars)"}), 400
+    if len(name) > 100:
+        return jsonify({"error": "name too long (max 100 chars)"}), 400
+    if email and len(email) > 200:
+        return jsonify({"error": "email too long (max 200 chars)"}), 400
+    # 简单的 email 格式校验（非严格）
+    if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+        return jsonify({"error": "invalid email"}), 400
+    report_time = time.time()
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    if client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    user_agent = request.headers.get('User-Agent')
+    loc = locateip(client_ip)
+    location = "未知" if not loc else f"{loc.get('country','未知')} {loc.get('subdiv','')} {loc.get('city','')}"
+    try:
+        resp = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data={"secret": secret, "response": token, "remoteip": client_ip},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        vr = resp.json()
+    except Exception as e:
+        return jsonify({"error": "recaptcha verification error", "detail": str(e)}), 500
 
-#         if not os.path.exists(sum_file_path):
-#             return jsonify({"error": "Failed to generate summary file"}), 500
+    if not vr.get("success"):
+        return jsonify({"error": "recaptcha verification failed", "detail": vr}), 403
+    try:
+        entry = {
+            "name": name,
+            "content": content,
+            "email": email,
+            "user_agent":user_agent,
+            "location": location,
+            "report_time": report_time
+        }
+        r.hset("message", entry["report_time"], json.dumps(entry))
+        return jsonify({"status": "ok", "entry": entry}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-#         with open(sum_file_path, 'r', encoding='utf-8') as f:
-#             content = f.read()
+    # Fallback to ensure a valid response is always returned
+    return jsonify({"error": "unexpected server error"}), 500
 
-#         resp = Response(content, mimetype='text/plain')
-#         resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-#         return resp, 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+
+
+
+
+@app.route('/get_messages', methods=['GET'])
+def get_messages():
+    """
+    获取留言列表（按存储顺序返回）
+    可选参数:
+      ?limit=N  （如果后端实现了 limit 行为）
+    """
+    try:
+        return get_1type_data("message")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/del_message', methods=['POST'])
+def del_message():
+    """
+    删除留言（需要 SECRET_KEY）
+    请求 JSON:
+      {
+        "report_time": 1234567890.0   # 必需，用于定位要删除的留言
+      }
+    """
+    key = request.headers.get('API-KEY')
+    if key != SECRET_KEY:
+        return jsonify({"error": "Invalid key"}), 403
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        report_time = data.get("report_time")
+        if report_time is None:
+            return jsonify({"error": "report_time is required"}), 400
+        try:
+            report_time = float(report_time)
+        except Exception:
+            return jsonify({"error": "invalid report_time"}), 400
+
+        removed_count = del_data("message", report_time)
+        if removed_count > 0:
+            return jsonify({"message": f"Removed {removed_count} item(s) from message"}), 200
+        else:
+            return jsonify({"message": "No items found with the specified report_time"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == '__main__':

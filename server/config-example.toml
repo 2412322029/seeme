@@ -23,3 +23,6 @@ Auth = ""
 [openai]
 base_url = "https://api.uniapi.io/v1"
 api_key = "sk-xxx"
+
+[recaptcha]
+secret=""

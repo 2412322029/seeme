@@ -6,9 +6,10 @@ import shutil
 import subprocess
 import time
 import traceback
+import requests
 
 from dotenv import load_dotenv
-from fabric import Connection
+from fabric import Connection, RemoteShell
 from sum import compare_sum_txt
 # 加载.env文件中的配置
 load_dotenv()
@@ -47,7 +48,6 @@ def build_frontend_with_copy():
     if not os.path.exists(dist_dir):
         print(f"Error: {dist_dir} does not exist.")
         return
-    # 复制dist目录下的所有内容到templates
     for item in os.listdir(dist_dir):
         src = os.path.join(dist_dir, item)
         dst = os.path.join(TEMPLATES_DIR, item)
@@ -116,9 +116,10 @@ def upload_files():
 
         # 上传本地有但远程没有的文件，或者本地和远程hash不同的文件
         files_to_upload = set(only_local).union(set(different))
-        input("Press Enter to continue uploading the following files:\n" + "\n".join(files_to_upload))
         if not files_to_upload:
             print("No files to upload.")
+        else:
+            input("\n".join(files_to_upload) + "\nPress Enter to continue uploading the following files:")
         for relative_path in files_to_upload:
             local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
             if not os.path.exists(local_path):
@@ -166,22 +167,19 @@ def upload_files():
             print("Ownership changed successfully.")
         else:
             print("Failed to change ownership.")
-         # 重新加载 应用
-        if conn.run(f"{REMOTE_DIR}/restart.sh").ok:
-            print("application start successfully.")
+        # Ensure restart script exists and run it with sudo, quoting the path to handle spaces/special chars
+        print(f"Executing restart script...")
+        conn.sudo(f"bash -l -c 'cd {REMOTE_DIR}; source .venv/bin/activate; ./restart.sh'")
+        # os.system(f"ssh -p {REMOTE_PORT} {REMOTE_USER}@{REMOTE_HOST} 'sudo bash -l -c \"{restart_path}\"'")
     print("All specified files have been uploaded.")
 
 
 def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     try:
-        # 创建 HTTP 连接
-        conn = http.client.HTTPConnection("https://i.not404.cc", port=443)
-        conn.request("GET", "/get_deployment_info")
-        response = conn.getresponse()
-        
-        if response.status == 200:
-            data = response.read()
-            remote_info = json.loads(data.decode("utf-8"))
+        url = f"https://{REMOTE_HOST}/get_deployment_info"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200:
+            remote_info = resp.json()
             if remote_info.get("deploy_time") == DEPLOY_TIME and remote_info.get("git_hash") == GIT_HASH:
                 print("Deployment info verified successfully.")
             else:
@@ -190,22 +188,24 @@ def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
                 print(f"Actual: {remote_info.get('deploy_time')}, {remote_info.get('git_hash')}")
             return remote_info
         else:
-            print(f"Failed to access remote server: {response.status} {response.reason}")
+            print(f"Failed to access remote server: {resp.status_code} {resp.reason}")
     except Exception as e:
         print(f"Error accessing remote server: {e}")
-    finally:
-        conn.close()
+    return None
 
 def main():
     # ...
     try:
         if input("build the frontend application? (y/n): ").lower() == 'y':
             build_frontend_with_copy()
+            if input("upload frontend files to the remote server? (y/n): ").lower() == 'y':
+                upload_frontend_files()
         if input("upload files to the remote server? (y/n): ").lower() == 'y':
             DEPLOY_TIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             GIT_HASH = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('utf-8').strip()
             update_deployment_info(DEPLOY_TIME, GIT_HASH)
             upload_files()
+            # print("去手动开启服务器吧~ pgrep -f gunicorn,  gunicorn -c gunicorn.conf.py main:app -D")
             print("wait for the server to restart...")
             time.sleep(5)
             verify_deployment_info(DEPLOY_TIME, GIT_HASH)
@@ -214,5 +214,19 @@ def main():
         traceback.print_exc()
         exit(1)
 
+def er(r):
+    if r.ok:
+        print("command executed successfully.")
+    else:
+        print(f"command failed {r}.")
+    if getattr(r, 'stdout', None):
+        print("stdout:", r.stdout.strip())
+    if getattr(r, 'stderr', None):
+        print("stderr:", r.stderr.strip())
+
 if __name__ == "__main__":
     main()
+    #  os.system(f"ssh -p {REMOTE_PORT} {REMOTE_USER}@{REMOTE_HOST} '/var/www/seeme/restart.sh'")
+    #  os.system(f"ssh -p {REMOTE_PORT} {REMOTE_USER}@{REMOTE_HOST}  \
+    #            \"bash -l -c 'source /var/www/seeme/.venv/bin/activate;cd /var/www/seeme/; gunicorn -c gunicorn.conf.py main:app'\"")
+#gunicorn -c /var/www/seeme/gunicorn.conf.py main:app -D

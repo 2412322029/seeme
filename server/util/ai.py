@@ -2,7 +2,6 @@ import hashlib
 import json
 import time
 import traceback
-
 from openai import OpenAI
 
 from .config import cfg

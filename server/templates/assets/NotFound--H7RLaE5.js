@@ -1,1 +1,0 @@
-import{c as o,a as s,h as t,w as u,u as l,c5 as n,o as c,i as d}from"./index-DAkhcvNy.js";const e={class:"not-found"},r={__name:"NotFound",setup:p=>(i,a)=>(c(),o("div",e,[a[1]||(a[1]=s("h1",null,"404 - 页面未找到",-1)),a[2]||(a[2]=s("p",null,"抱歉，您访问的页面不存在。",-1)),t(l(n),{to:"/"},{default:u(()=>a[0]||(a[0]=[d("返回首页")])),_:1})]))};export{r as default};
