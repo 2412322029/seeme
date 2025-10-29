@@ -12,3 +12,5 @@ server/manifest.json
 MultiServer/
 MultiServer/main.py
 server/util/GeoLite2-City.mmdb
+server/localhost+2-key.pem
+server/localhost+2.pem

@@ -71,7 +71,60 @@ def index():
 @app.route('/<path:filename>')
 def template_proxy(filename):
     template_dir = os.path.join(app.root_path, 'templates')
-    return send_from_directory(template_dir, filename)
+    cache_seconds = 30 * 24 * 3600  # 30 days
+    resp = send_from_directory(template_dir, filename)
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    static_exts = {
+        'css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'
+    }
+    if ext in static_exts and hasattr(resp, 'headers'):
+        resp.headers.update({'Cache-Control': f'public, max-age={cache_seconds}'})
+        resp.headers.update({'Expires': time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + cache_seconds))})
+    return resp
+
+@app.route('/c/<mmd>', methods=['GET'])
+def paste(mmd):
+    try:
+        # validate mmd: must be exactly 3 English letters
+        if not re.fullmatch(r'[A-Za-z]{3}', mmd):
+            return jsonify({"error": "mmd must be exactly 3 letters"}), 400
+        raw = r.get("paste:"+mmd)
+        if raw is None:
+            return jsonify({"key": mmd, "data": ""}), 200
+        else:
+            # Redis 返回 bytes 时解码为字符串
+            data = raw.decode('utf-8') if isinstance(raw, bytes) else raw
+            return jsonify({"key": mmd, "data": data}), 200
+    except Exception as e:
+        return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
+#获取 r.set("paste:"+mmd, "") 的值
+@app.route('/c/<mmd>', methods=['POST'])
+def paste_post(mmd):
+    try:
+        # validate mmd: must be exactly 3 English letters
+        if not re.fullmatch(r'[A-Za-z]{3}', mmd):
+            return jsonify({"error": "mmd must be exactly 3 letters"}), 400
+
+        payload = request.get_json(force=True, silent=True)
+        if not payload or 'data' not in payload:
+            return jsonify({"error": "Missing 'data' in JSON body"}), 400
+
+        data = payload.get('data', '')
+        if not data:
+            return jsonify({"error": "data is empty"}), 400
+
+        # Ensure data is a string/bytes and check UTF-8 byte length <= 8KB
+        if not isinstance(data, (str, bytes, bytearray)):
+            data = str(data)
+
+        size = len(data.encode('utf-8')) if isinstance(data, str) else len(data)
+        if size > 8 * 1024:
+            return jsonify({"error": "data exceeds 8KB limit"}), 400
+
+        r.set("paste:"+mmd, data)
+        return jsonify({"status": "ok", "key": mmd}), 200
+    except Exception as e:
+        return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
 
 
 @app.errorhandler(404)
@@ -252,8 +305,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-10-27 18:54:30",
-        "git_hash": "2da9d2c"
+        "deploy_time": "2025-10-29 13:45:41",
+        "git_hash": "a19917f"
     }
     return jsonify(deployment_info), 200
 
