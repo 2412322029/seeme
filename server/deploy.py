@@ -18,7 +18,16 @@ REMOTE_HOST = os.getenv('REMOTE_HOST')  # 远程服务器IP或域名
 REMOTE_USER = os.getenv('REMOTE_USER')  # 远程服务器用户名
 REMOTE_PORT = int(os.getenv('REMOTE_PORT', 22))  # SSH端口，默认为22
 REMOTE_DIR = os.getenv('REMOTE_DIR')  # 远程服务器目标目录
-Frontend_DIR = os.getenv('Frontend_DIR')  # 前端目录
+FRONTEND_DIR = os.getenv('FRONTEND_DIR')  # 前端目录
+verify_url = os.getenv('verify_url')  # 验证URL
+# 示例.env文件内容
+# REMOTE_HOST=xxx.xxx.xxx.xxx
+# REMOTE_USER=root
+# REMOTE_PORT=22
+# REMOTE_DIR=/var/www/seeme
+# FRONTEND_DIR=D:\24123\code\js\seeme-frontend
+# PYPATH=/var/www/seeme/.venv/bin/python3
+# verify_url=https://i.not404.cc/api/get_deployment_info
 
 def build_frontend_with_copy():
     """
@@ -40,11 +49,11 @@ def build_frontend_with_copy():
                     if asset_file.endswith(('.css', '.js')):
                         os.remove(os.path.join(asset_root, asset_file))
     print("Building frontend application...")
-    os.system(f'cd {Frontend_DIR} && npm run build')
+    os.system(f'cd {FRONTEND_DIR} && npm run build')
     print("Frontend application built successfully.")
-    # 将Frontend_DIR/dist目录的内容复制到templates目录
+    # 将FRONTEND_DIR/dist目录的内容复制到templates目录
     print("Copying dist content to templates directory...")
-    dist_dir = os.path.join(Frontend_DIR, 'dist')
+    dist_dir = os.path.join(FRONTEND_DIR, 'dist')
     if not os.path.exists(dist_dir):
         print(f"Error: {dist_dir} does not exist.")
         return
@@ -176,7 +185,7 @@ def upload_files():
 
 def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     try:
-        url = f"https://i.not404.cc/api/get_deployment_info"
+        url = f"{{verify_url}}"
         resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             remote_info = resp.json()
