@@ -1,1 +1,0 @@
-import{c as o,a as s,f as t,w as u,u as f,c1 as l,o as n,k as d}from"./index-uHSdsz2C.js";const e={class:"not-found"},_={__name:"NotFound",setup:p=>(m,a)=>(n(),o("div",e,[a[1]||(a[1]=s("h1",null,"404 - 页面未找到",-1)),a[2]||(a[2]=s("p",null,"抱歉，您访问的页面不存在。",-1)),t(f(l),{to:"/"},{default:u(()=>a[0]||(a[0]=[d("返回首页")])),_:1})]))};export{_ as default};
