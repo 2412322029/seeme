@@ -51,20 +51,6 @@ def build_frontend_with_copy():
     print("Building frontend application...")
     os.system(f'cd {FRONTEND_DIR} && npm run build')
     print("Frontend application built successfully.")
-    # 将FRONTEND_DIR/dist目录的内容复制到templates目录
-    print("Copying dist content to templates directory...")
-    dist_dir = os.path.join(FRONTEND_DIR, 'dist')
-    if not os.path.exists(dist_dir):
-        print(f"Error: {dist_dir} does not exist.")
-        return
-    for item in os.listdir(dist_dir):
-        src = os.path.join(dist_dir, item)
-        dst = os.path.join(TEMPLATES_DIR, item)
-        if os.path.isdir(src):
-            shutil.copytree(src, dst, dirs_exist_ok=True)
-        else:
-            shutil.copy2(src, dst)
-    print("Content copied successfully.")
 
 def update_deployment_info(DEPLOY_TIME, GIT_HASH):
     """
@@ -92,7 +78,11 @@ def upload_frontend_files():
         else:   
             print("Failed to delete existing files.")
                  # 上传 templates/index.html
-        local_index_path = "templates/index.html"
+        dist_dir = os.path.join(FRONTEND_DIR, 'dist')
+        if not os.path.exists(dist_dir):
+            print(f"Error: {dist_dir} does not exist.")
+            return
+        local_index_path = f"{dist_dir}/index.html"
         remote_index_path = f"{REMOTE_DIR}/templates/"
         if os.path.isfile(local_index_path):
             print(f"Uploading {local_index_path} to {remote_index_path}...", end=' ')
@@ -100,7 +90,7 @@ def upload_frontend_files():
             print(f"Uploaded index.html successfully.")
 
         # 上传 templates/assets 下的 .css 和 .js 文件
-        local_assets_path = "templates/assets"
+        local_assets_path =  f"{dist_dir}/assets"
         remote_assets_path = f"{REMOTE_DIR}/templates/assets"
         for filename in os.listdir(local_assets_path):
             local_file_path = fr"{local_assets_path}\{filename}"

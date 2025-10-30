@@ -11,7 +11,7 @@ server/manifest.json
 MultiServer/
 MultiServer/main.py
 server/util/GeoLite2-City.mmdb
-/server/logs/
+logs/
 /server/sum.txt
-/server/templates
-/server/templates/index.html
+templates/
+server/templates
