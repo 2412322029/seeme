@@ -176,7 +176,7 @@ def upload_files():
 
 def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     try:
-        url = f"https://{REMOTE_HOST}/get_deployment_info"
+        url = f"https://i.not404.cc/api/get_deployment_info"
         resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             remote_info = resp.json()

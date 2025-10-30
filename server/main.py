@@ -5,7 +5,7 @@ import time
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
-from flask import Flask, Response, render_template, request, jsonify, send_from_directory
+from flask import Flask, Response, render_template, request, jsonify, send_from_directory, Blueprint
 
 from util.ai import completion_api, del_cache
 from util.config import SECRET_KEY, cfg
@@ -16,18 +16,20 @@ from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types,
 from util.steamapi import steam_info, steam_friend_list, steam_friend_info
 from sum import generate_sum_txt, sum_file_path
 app = Flask(__name__)
+api_bp = Blueprint('api', __name__, url_prefix='/api')
+
 UPLOAD_ICON_FOLDER = os.path.join(os.path.dirname(__file__), "templates/exe_icon")
 os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
 
 
-# @app.before_request
+# @api_bp.before_request
 # def force_https():
 #     if request.url.startswith('http://'):
 #         url = request.url.replace('http://', 'https://', 1)
 #         return redirect(url, code=301)
 
 
-@app.after_request
+@api_bp.after_request
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'  # 允许所有域
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
@@ -40,7 +42,7 @@ def is_valid_address(address: str) -> bool:
     return re.match(pattern, address) is not None
 
 
-@app.route('/get_mcinfo/<address>')
+@api_bp.route('/get_mcinfo/<address>')
 def get_mcinfo(address: str):
     if is_valid_address(address):
         return jsonify(mcinfo(address)), 200
@@ -48,7 +50,7 @@ def get_mcinfo(address: str):
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
 
-@app.route('/get_mclatency/<address>')
+@api_bp.route('/get_mclatency/<address>')
 def get_mclatency(address: str):
     if is_valid_address(address):
         return jsonify(mclatency(address)), 200
@@ -56,33 +58,33 @@ def get_mclatency(address: str):
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
 
-@app.route('/')
-def index():
-    access_count = get_data("access_count")
-    try:
-        access_count = int(access_count)
-    except ValueError:
-        access_count = 0
-    access_count = access_count + 1
-    set_data("access_count", str(access_count))
-    return render_template('index.html')
+# @api_bp.route('/')
+# def index():
+#     access_count = get_data("access_count")
+#     try:
+#         access_count = int(access_count)
+#     except ValueError:
+#         access_count = 0
+#     access_count = access_count + 1
+#     set_data("access_count", str(access_count))
+#     return render_template('index.html')
 
 
-@app.route('/<path:filename>')
-def template_proxy(filename):
-    template_dir = os.path.join(app.root_path, 'templates')
-    cache_seconds = 30 * 24 * 3600  # 30 days
-    resp = send_from_directory(template_dir, filename)
-    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-    static_exts = {
-        'css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'
-    }
-    if ext in static_exts and hasattr(resp, 'headers'):
-        resp.headers.update({'Cache-Control': f'public, max-age={cache_seconds}'})
-        resp.headers.update({'Expires': time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + cache_seconds))})
-    return resp
+# @api_bp.route('/<path:filename>')
+# def template_proxy(filename):
+#     template_dir = os.path.join(app.root_path, 'templates')
+#     cache_seconds = 30 * 24 * 3600  # 30 days
+#     resp = send_from_directory(template_dir, filename)
+#     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+#     static_exts = {
+#         'css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'
+#     }
+#     if ext in static_exts and hasattr(resp, 'headers'):
+#         resp.headers.update({'Cache-Control': f'public, max-age={cache_seconds}'})
+#         resp.headers.update({'Expires': time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + cache_seconds))})
+#     return resp
 
-@app.route('/c/<mmd>', methods=['GET'])
+@api_bp.route('/c/<mmd>', methods=['GET'])
 def paste(mmd):
     try:
         # validate mmd: must be exactly 3 English letters
@@ -98,7 +100,7 @@ def paste(mmd):
     except Exception as e:
         return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
 #获取 r.set("paste:"+mmd, "") 的值
-@app.route('/c/<mmd>', methods=['POST'])
+@api_bp.route('/c/<mmd>', methods=['POST'])
 def paste_post(mmd):
     try:
         # validate mmd: must be exactly 3 English letters
@@ -127,12 +129,12 @@ def paste_post(mmd):
         return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
 
 
-@app.errorhandler(404)
+@api_bp.errorhandler(404)
 def page_not_found(e):
     return render_template('index.html')
 
 
-@app.route('/set_info', methods=['POST'])
+@api_bp.route('/set_info', methods=['POST'])
 def set_info():
     try:
         key = request.headers.get('API-KEY')
@@ -164,7 +166,7 @@ def set_info():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/get_info', methods=['GET'])
+@api_bp.route('/get_info', methods=['GET'])
 def get_info():
     t = request.args.get("type")
     if t in get_all_types():
@@ -173,7 +175,7 @@ def get_info():
         return get_all_types_data()
 
 
-@app.route('/del_info', methods=['POST'])
+@api_bp.route('/del_info', methods=['POST'])
 def del_info():
     key = request.headers.get('API-KEY')
     if key != SECRET_KEY:
@@ -200,7 +202,7 @@ def validate_limit(value, name):
     return None
 
 
-@app.route('/set_limit', methods=['POST'])
+@api_bp.route('/set_limit', methods=['POST'])
 def set_limit_api():
     key = request.headers.get('API-KEY')
     if key != SECRET_KEY:
@@ -224,22 +226,22 @@ def set_limit_api():
     return jsonify(get_limit()), 200
 
 
-@app.route('/get_limit', methods=['GET'])
+@api_bp.route('/get_limit', methods=['GET'])
 def get_limit_api():
     return jsonify(get_limit()), 200
 
 
-@app.route('/get_all_types', methods=['GET'])
+@api_bp.route('/get_all_types', methods=['GET'])
 def get_all_types_api():
     return jsonify(get_all_types()), 200
 
 
-@app.route('/get_activity_window', methods=['GET'])
+@api_bp.route('/get_activity_window', methods=['GET'])
 def get_activity_window():
     return jsonify(json.loads(get_data("activity_window"))), 200
 
 
-@app.route('/upload_exeIcon', methods=['POST'])
+@api_bp.route('/upload_exeIcon', methods=['POST'])
 def upload_exeIcon():
     key = request.headers.get('API-KEY')
     if key != SECRET_KEY:
@@ -261,7 +263,7 @@ def upload_exeIcon():
     return jsonify({"message": "File uploaded successfully", "filename": saved_files}), 200
 
 
-@app.route('/get_allIcon', methods=['GET'])
+@api_bp.route('/get_allIcon', methods=['GET'])
 def get_allIcon():
     try:
         all_entries = os.listdir(UPLOAD_ICON_FOLDER)
@@ -272,7 +274,7 @@ def get_allIcon():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/get_steam_info', methods=['GET'])
+@api_bp.route('/get_steam_info', methods=['GET'])
 def get_steam_info():
     try:
         return jsonify(steam_info()), 200
@@ -280,7 +282,7 @@ def get_steam_info():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/get_steam_friend_list', methods=['GET'])
+@api_bp.route('/get_steam_friend_list', methods=['GET'])
 def get_steam_friend_list():
     try:
         return jsonify(steam_friend_list(t=time.time())), 200
@@ -288,7 +290,7 @@ def get_steam_friend_list():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/get_steam_friend_info', methods=['GET'])
+@api_bp.route('/get_steam_friend_info', methods=['GET'])
 def get_steam_friend_info():
     try:
         return jsonify(steam_friend_info()), 200
@@ -296,7 +298,7 @@ def get_steam_friend_info():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/get_deployment_info', methods=['GET'])
+@api_bp.route('/get_deployment_info', methods=['GET'])
 def get_deployment_info():
     access_count = get_data("access_count")
     try:
@@ -305,18 +307,18 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-10-29 13:45:41",
-        "git_hash": "a19917f"
+        "deploy_time": "2025-10-30 11:29:36",
+        "git_hash": "2bd384c"
     }
     return jsonify(deployment_info), 200
 
 
-@app.route('/ai_summary', methods=['GET'])
+@api_bp.route('/ai_summary', methods=['GET'])
 def ai_summary():
     return Response(completion_api(), mimetype="text/event-stream")
 
 
-@app.route('/del_ai_cache', methods=['GET'])
+@api_bp.route('/del_ai_cache', methods=['GET'])
 def del_ai_cache():
     try:
         return f'已删除{del_cache()}条'
@@ -324,7 +326,7 @@ def del_ai_cache():
         return str(e)
 
 
-@app.route('/del_xlog_cache', methods=['GET'])
+@api_bp.route('/del_xlog_cache', methods=['GET'])
 def del_xlog_cache():
     try:
         return f'已删除{r.delete("xlog")}'
@@ -332,7 +334,7 @@ def del_xlog_cache():
         return str(e)
 
 
-@app.route('/proxy_xlog', methods=['GET'])
+@api_bp.route('/proxy_xlog', methods=['GET'])
 def proxy_xlog():
     # p = os.path.join(os.path.dirname(__file__), "data.json")
     # with open(p, "r", encoding="utf8") as f:
@@ -355,7 +357,7 @@ def proxy_xlog():
     return response.json()
 
 
-@app.route('/proxy', methods=['GET'])
+@api_bp.route('/proxy', methods=['GET'])
 def proxy():
     target_url = request.args.get('url')
     if not target_url:
@@ -399,7 +401,7 @@ def proxy():
 
 # 留言功能api
 # 频率限制
-@app.route('/leave_message', methods=['POST'])
+@api_bp.route('/leave_message', methods=['POST'])
 def leave_message_route():
     """
     留言接口，先做 Google reCAPTCHA 校验（如果在 cfg 中配置了 recaptcha.secret），
@@ -475,7 +477,7 @@ def leave_message_route():
 
 
 
-@app.route('/get_messages', methods=['GET'])
+@api_bp.route('/get_messages', methods=['GET'])
 def get_messages():
     """
     获取留言列表（按存储顺序返回）
@@ -488,7 +490,7 @@ def get_messages():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/del_message', methods=['POST'])
+@api_bp.route('/del_message', methods=['POST'])
 def del_message():
     """
     删除留言（需要 SECRET_KEY）
@@ -519,7 +521,7 @@ def del_message():
         return jsonify({"error": str(e)}), 500
 
 
-
+app.register_blueprint(api_bp)
 if __name__ == '__main__':
     app.run("0.0.0.0", 5000)
     # from wsgiref.simple_server import make_server

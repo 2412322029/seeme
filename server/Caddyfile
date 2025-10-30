@@ -1,0 +1,28 @@
+localhost:443 {
+	encode gzip
+	handle /api/* {
+		reverse_proxy http://localhost:5000
+	}
+	handle {
+		root * ./templates   #前端产物路径
+		try_files {path} /index.html
+		file_server
+	}
+	@staticFiles {
+		path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.ttf *.eot
+	}
+	header @staticFiles Cache-Control "public, max-age=2592000"
+	header {
+		Strict-Transport-Security "max-age=63072000"
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+	}
+	log {
+		output file ./logs/access.log {
+			roll_size 50MiB
+			roll_keep 10
+			roll_keep_for 720h
+			mode 0644
+		}
+	}
+}

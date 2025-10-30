@@ -1,7 +1,6 @@
 .idea/
 __pycache__/
 .venv
-/server/templates/exe_icon/
 dist/
 /report/build/
 .env
@@ -12,5 +11,7 @@ server/manifest.json
 MultiServer/
 MultiServer/main.py
 server/util/GeoLite2-City.mmdb
-server/localhost+2-key.pem
-server/localhost+2.pem
+/server/logs/
+/server/sum.txt
+/server/templates
+/server/templates/index.html

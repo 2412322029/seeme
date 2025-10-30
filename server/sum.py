@@ -3,8 +3,8 @@ from util.config import SECRET_KEY
 from dotenv import load_dotenv
 from fabric import Connection
 #排除文件和文件夹
-EXCLUDE_DIRS = {'__pycache__', '.git', 'venv', '.venv', 'exe_icon'}
-EXCLUDE_FILES = {'.env','config.toml','config-example.toml','data.json','sum.txt', 'deploy.py'}
+EXCLUDE_DIRS = {'__pycache__', '.git', 'venv', '.venv', 'exe_icon','logs'}
+EXCLUDE_FILES = {'.env','config.toml','config-example.toml','data.json','sum.txt', 'deploy.py','Caddyfile'}
 sum_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sum.txt')
 # remote_sum_url = "http://127.0.0.1:5000/get_filesum"
 remote_sum_url = "https://i.not404.cc/get_filesum"
