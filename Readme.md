@@ -12,7 +12,7 @@ graph LR
     A[数据采集] --> B[电脑端]
     A --> C[ 浏览器端]
     A --> D[安卓端]
-	F[Linux服务器<br>使用uwsgi（配置app.ini）<br>部署FlasK <数据缓存至Redis> ]
+	F[Linux服务器<br>使用gunicorn（配置gunicorn.conf.py）<br>部署Flask <数据缓存至Redis> ]
 	
 	F --> x[前端数据展示]
 	
@@ -29,10 +29,11 @@ graph LR
     N -->|自动上传数据<br>自动触发<br>切换应用| F
 ```
 ## 服务端
-
+上传server文件夹到服务，安装python3 pip3 python虚拟环境并激活
 ```bash
-cd server
-pip install -r requirement.txt
+pip install poetry
+poetry install
+cp config-example.toml config.toml #修改配置
 ```
 
 在config.toml 填写SECRET_KEY = "your key"。
@@ -41,12 +42,30 @@ pip install -r requirement.txt
 > (默认)redis 保存数据,支持多进程。
 
 > json 保存数据，多进程不安全，配置文件设置without_redis = true启用
-> 使用uwsgi时注意设置processes=1。
 >
 redis配置默认本机。Data_limit_default是默认限制条数只在初始化时使用。
 
-部署到Linux使用uwsgi `pip insatll uwsgi` app.ini 有相关配置，使用`uwsgi --ini app.ini`启动。
+部署到Linux使用gunicorn `pip insatll gunicorn`
+例子:
+```bash
+/var/www/seeme/.venv/bin/gunicorn -c /var/www/seeme/gunicorn.conf.py main:app -D
+```
 
+使用Caddy 反代 gunicorn和前端文件，修改Caddyfile域名和前端文件路径
+
+### 自动部署更新
+服务的创建重启脚本restart.sh
+```bash
+export PATH=$PATH:/var/www/seeme/.venv/bin
+
+if [ -f /var/www/seeme/gunicorn.pid ]; then
+    # 文件存在，尝试杀进程
+    kill -9 $(cat /var/www/seeme/gunicorn.pid) 2>/dev/null
+fi
+# 启动服务
+/var/www/seeme/.venv/bin/gunicorn -c /var/www/seeme/gunicorn.conf.py main:app -D
+```
+打开deploy.py 根据注释添加.env文件，填写相关信息，运行脚本会自动上传新增/修改的文件，并执行重启脚本./restart.sh
 ## 报告端
 报告端任选，有对应报告端就有对应数据显示(都在report文件夹中)
 ### pc报告端

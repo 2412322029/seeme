@@ -307,8 +307,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-10-30 11:29:36",
-        "git_hash": "2bd384c"
+        "deploy_time": "2025-10-30 13:05:15",
+        "git_hash": "6109ed5"
     }
     return jsonify(deployment_info), 200
 

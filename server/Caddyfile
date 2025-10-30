@@ -1,4 +1,4 @@
-localhost:443 {
+localhost:443 { #域名
 	encode gzip
 	handle /api/* {
 		reverse_proxy http://localhost:5000

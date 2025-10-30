@@ -175,7 +175,7 @@ def upload_files():
 
 def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
     try:
-        url = f"{{verify_url}}"
+        url = f"{verify_url}"
         resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             remote_info = resp.json()
