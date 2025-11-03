@@ -4,8 +4,8 @@ import sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
-__version__ = "0.1.7"
-__buildAt__ = "2025-03-01 14:03:12"
+__version__ = "0.1.8"
+__buildAt__ = "2025-11-03 19:15:36"
 APPDATA = os.path.dirname(os.path.abspath(__file__))  # 脚本文件目录
 if sys.platform == "win32":
     APPDATA = os.path.join(os.environ["LOCALAPPDATA"], "seeme-report")
