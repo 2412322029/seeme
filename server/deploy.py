@@ -19,6 +19,7 @@ REMOTE_USER = os.getenv('REMOTE_USER')  # 远程服务器用户名
 REMOTE_PORT = int(os.getenv('REMOTE_PORT', 22))  # SSH端口，默认为22
 REMOTE_DIR = os.getenv('REMOTE_DIR')  # 远程服务器目标目录
 FRONTEND_DIR = os.getenv('FRONTEND_DIR')  # 前端目录
+REMOTE_FRONTEND_DIR = os.getenv('REMOTE_FRONTEND_DIR')  # 远程前端目录
 verify_url = os.getenv('verify_url')  # 验证URL
 # 示例.env文件内容
 # REMOTE_HOST=xxx.xxx.xxx.xxx
@@ -26,15 +27,16 @@ verify_url = os.getenv('verify_url')  # 验证URL
 # REMOTE_PORT=22
 # REMOTE_DIR=/var/www/seeme
 # FRONTEND_DIR=D:\24123\code\js\seeme-frontend
-# PYPATH=/var/www/seeme/.venv/bin/python3
+# PYPATH=/var/www/seeme/.venv/bin/python3 
 # verify_url=https://i.not404.cc/api/get_deployment_info
+# REMOTE_FRONTEND_DIR=/var/www/seeme/templates
 
 def build_frontend_with_copy():
     """
     构建前端应用
     """
     # 清理templates目录下的html文件以及子目录assets下的css和js文件
-    TEMPLATES_DIR = './templates'
+    TEMPLATES_DIR = REMOTE_FRONTEND_DIR
     print("Cleaning templates directory...")
     # 删除templates目录下的所有.html文件
     for root, dirs, files in os.walk(TEMPLATES_DIR):
@@ -73,7 +75,7 @@ def upload_frontend_files():
         conn.run(f"mkdir -p {REMOTE_DIR}")
        # 删除远程目录下的 html, css 和 js 文件
         print("Deleting existing html, css and js files in remote directory...")
-        if conn.run(f"rm -f {REMOTE_DIR}/templates/assets/*.css {REMOTE_DIR}/templates/assets/*.js {REMOTE_DIR}/templates/index.html"):
+        if conn.run(f"rm -f {REMOTE_FRONTEND_DIR}/assets/*.css {REMOTE_FRONTEND_DIR}/assets/*.js {REMOTE_FRONTEND_DIR}/index.html"):
             print("Deleted existing files successfully.")
         else:   
             print("Failed to delete existing files.")
@@ -83,7 +85,7 @@ def upload_frontend_files():
             print(f"Error: {dist_dir} does not exist.")
             return
         local_index_path = f"{dist_dir}/index.html"
-        remote_index_path = f"{REMOTE_DIR}/templates/"
+        remote_index_path = f"{REMOTE_FRONTEND_DIR}/"
         if os.path.isfile(local_index_path):
             print(f"Uploading {local_index_path} to {remote_index_path}...", end=' ')
             conn.put(local_index_path, remote_index_path)
@@ -91,7 +93,7 @@ def upload_frontend_files():
 
         # 上传 templates/assets 下的 .css 和 .js 文件
         local_assets_path =  f"{dist_dir}/assets"
-        remote_assets_path = f"{REMOTE_DIR}/templates/assets"
+        remote_assets_path = f"{REMOTE_FRONTEND_DIR}/assets"
         for filename in os.listdir(local_assets_path):
             local_file_path = fr"{local_assets_path}\{filename}"
             remote_file_path = fr"{remote_assets_path}/{filename}"

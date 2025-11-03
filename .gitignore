@@ -12,6 +12,8 @@ MultiServer/
 MultiServer/main.py
 server/util/GeoLite2-City.mmdb
 logs/
-/server/sum.txt
 templates/
 server/templates
+server/util/cache.json
+server/test.py
+server/sum.txt

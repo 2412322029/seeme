@@ -5,16 +5,16 @@ import time
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
-from flask import Flask, Response, render_template, request, jsonify, send_from_directory, Blueprint
+from flask import Flask, Response, render_template, request, jsonify, Blueprint
 
 from util.ai import completion_api, del_cache
 from util.config import SECRET_KEY, cfg
 from util.ip import locateip
 from util.mcinfo import mcinfo, mclatency
-from util.rediscache import (put_data, get_1type_data, get_limit, get_all_types, r,
+from util.rediscache import (key_to_ts, put_data, get_1type_data, get_limit, get_all_types, r,
                              get_all_types_data, set_limit, del_data, set_data, get_data)
 from util.steamapi import steam_info, steam_friend_list, steam_friend_info
-from sum import generate_sum_txt, sum_file_path
+import secrets
 app = Flask(__name__)
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -56,33 +56,6 @@ def get_mclatency(address: str):
         return jsonify(mclatency(address)), 200
     else:
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
-
-
-# @api_bp.route('/')
-# def index():
-#     access_count = get_data("access_count")
-#     try:
-#         access_count = int(access_count)
-#     except ValueError:
-#         access_count = 0
-#     access_count = access_count + 1
-#     set_data("access_count", str(access_count))
-#     return render_template('index.html')
-
-
-# @api_bp.route('/<path:filename>')
-# def template_proxy(filename):
-#     template_dir = os.path.join(app.root_path, 'templates')
-#     cache_seconds = 30 * 24 * 3600  # 30 days
-#     resp = send_from_directory(template_dir, filename)
-#     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-#     static_exts = {
-#         'css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'ico'
-#     }
-#     if ext in static_exts and hasattr(resp, 'headers'):
-#         resp.headers.update({'Cache-Control': f'public, max-age={cache_seconds}'})
-#         resp.headers.update({'Expires': time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.gmtime(time.time() + cache_seconds))})
-#     return resp
 
 @api_bp.route('/c/<mmd>', methods=['GET'])
 def paste(mmd):
@@ -128,11 +101,95 @@ def paste_post(mmd):
     except Exception as e:
         return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
 
+@api_bp.route('/get_pub_info', methods=['GET'])
+def get_pub_info():
+    try:
+        name = request.args.get('name')
+        if not 0 < len(str(name)) < 20 or not r.get(f"user_secret:{name}"):
+            return jsonify({"error":"Invalid name"}), 409
+        all_info = r.hgetall(f"public_info:{name}")
+        result = {}
+        for k, v in all_info.items():
+            key = k.decode('utf-8') if isinstance(k, bytes) else k
+            value = v.decode('utf-8') if isinstance(v, bytes) else v
+            result[key] = json.loads(value)
+        return jsonify({"data": f"{result}"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-@api_bp.errorhandler(404)
-def page_not_found(e):
-    return render_template('index.html')
+@api_bp.route('/set_pub_info', methods=['POST'])
+def set_pub_info():
+    try:
+        key = request.headers.get('API-KEY')
+        name = request.json.get('name')
+        info = request.json.get('info')
+        if not 0 < len(str(name)) < 20 or not r.get(f"user_secret:{name}") or not key\
+            or key != r.get(f"user_secret:{name}").decode('utf-8'):
+            return jsonify({"error":"Invalid key or name"}), 409
+        if not info or len(info) > 10000:
+            return jsonify({"error":"info is requseted and must be less than 10000 characters"}), 410
+        report_time = info.get("report_time")
+        if not report_time:
+            return jsonify({"error":"report_time is requseted in info"}), 411
+        r.hset(f"public_info:{name}", f"{report_time}", json.dumps(info))
+        # 保留最新100条
+        all_keys = r.hkeys(f"public_info:{name}")
+        if len(all_keys) > 100:
+            sorted_keys = sorted(all_keys, key=lambda x: key_to_ts(x.decode('utf-8')))
+            keys_to_delete = sorted_keys[:-100]
+            for k in keys_to_delete:
+                r.hdel(f"public_info:{name}", k)
+        return jsonify({"status": "ok", "message": "Public info updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@api_bp.route('/request_secret', methods=['POST'])
+def request_secret():
+    try:
+        key = request.headers.get('API-KEY')
+        name = request.form.get('name') or request.json.get('name')
+        if r.get(f"user_secret:{name}") is not None:
+            return jsonify({"error":"name already exists"}), 409
+        if not 0 < len(str(name)) < 20:
+            return jsonify({"error":"name is requseted,>0,<20"}), 410
+        if key != SECRET_KEY:
+            return jsonify({"error": "Invalid key"}), 403
+        else:
+            s = secrets.token_hex(16)
+            r.set(f"user_secret:{name}",f"{s}")
+            return jsonify({"secret_key": f"{s}", "message": "Secret key created successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
+@api_bp.route('/del_secret', methods=['DELETE', 'POST'])
+def del_secret():
+    try:
+        key = request.headers.get('API-KEY')
+        name = request.form.get('name') or request.json.get('name')
+        if r.get(f"user_secret:{name}") is None:
+            return jsonify({"error":"name not exists"}), 409
+        if key != SECRET_KEY:
+            return jsonify({"error": "Invalid key"}), 403
+        else:
+            r.delete(f"user_secret:{name}")
+            r.delete(f"public_info:{name}")
+            return jsonify({"status": "ok", "message": "Deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api_bp.route('/get_all_request_secret', methods=['GET'])
+def get_all_request_secret():
+    try:
+        if request.headers.get('API-KEY') != SECRET_KEY:
+            return jsonify({"error": "Invalid key"}), 403
+        all_secrets = r.keys("user_secret:*")
+        result = {}
+        for secret in all_secrets:
+            name = secret.decode('utf-8').split(":", 1)[1]
+            result[name] = r.get(secret).decode('utf-8')
+        return jsonify({"data": result}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @api_bp.route('/set_info', methods=['POST'])
 def set_info():
@@ -307,9 +364,15 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-10-30 13:05:15",
-        "git_hash": "6109ed5"
+        "deploy_time": "2025-11-01 09:25:38",
+        "git_hash": "4b43f84"
     }
+    try:
+        access_count=int(access_count)
+    except ValueError:
+        access_count =0
+    access_count=access_count+1
+    set_data("access_count", str(access_count))
     return jsonify(deployment_info), 200
 
 
@@ -525,8 +588,6 @@ app.register_blueprint(api_bp)
 if __name__ == '__main__':
     app.run("0.0.0.0", 5000)
     # from wsgiref.simple_server import make_server
-
-
     # httpd = make_server('0.0.0.0', 5000, app)
     # print('Serving HTTP on port 5000...')
     # try:
