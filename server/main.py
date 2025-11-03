@@ -15,6 +15,7 @@ from util.rediscache import (key_to_ts, put_data, get_1type_data, get_limit, get
                              get_all_types_data, set_limit, del_data, set_data, get_data)
 from util.steamapi import steam_info, steam_friend_list, steam_friend_info
 import secrets
+
 app = Flask(__name__)
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -57,13 +58,14 @@ def get_mclatency(address: str):
     else:
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
+
 @api_bp.route('/c/<mmd>', methods=['GET'])
 def paste(mmd):
     try:
         # validate mmd: must be exactly 3 English letters
         if not re.fullmatch(r'[A-Za-z]{3}', mmd):
             return jsonify({"error": "mmd must be exactly 3 letters"}), 400
-        raw = r.get("paste:"+mmd)
+        raw = r.get("paste:" + mmd)
         if raw is None:
             return jsonify({"key": mmd, "data": ""}), 200
         else:
@@ -72,7 +74,9 @@ def paste(mmd):
             return jsonify({"key": mmd, "data": data}), 200
     except Exception as e:
         return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
-#获取 r.set("paste:"+mmd, "") 的值
+
+
+# 获取 r.set("paste:"+mmd, "") 的值
 @api_bp.route('/c/<mmd>', methods=['POST'])
 def paste_post(mmd):
     try:
@@ -96,26 +100,28 @@ def paste_post(mmd):
         if size > 8 * 1024:
             return jsonify({"error": "data exceeds 8KB limit"}), 400
 
-        r.set("paste:"+mmd, data)
+        r.set("paste:" + mmd, data)
         return jsonify({"status": "ok", "key": mmd}), 200
     except Exception as e:
         return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
+
 
 @api_bp.route('/get_pub_info', methods=['GET'])
 def get_pub_info():
     try:
         name = request.args.get('name')
         if not 0 < len(str(name)) < 20 or not r.get(f"user_secret:{name}"):
-            return jsonify({"error":"Invalid name"}), 409
+            return jsonify({"error": "Invalid name"}), 409
         all_info = r.hgetall(f"public_info:{name}")
         result = {}
         for k, v in all_info.items():
             key = k.decode('utf-8') if isinstance(k, bytes) else k
             value = v.decode('utf-8') if isinstance(v, bytes) else v
             result[key] = json.loads(value)
-        return jsonify({"data": f"{result}"}), 200
+        return jsonify({"data": result}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/set_pub_info', methods=['POST'])
 def set_pub_info():
@@ -123,14 +129,14 @@ def set_pub_info():
         key = request.headers.get('API-KEY')
         name = request.json.get('name')
         info = request.json.get('info')
-        if not 0 < len(str(name)) < 20 or not r.get(f"user_secret:{name}") or not key\
-            or key != r.get(f"user_secret:{name}").decode('utf-8'):
-            return jsonify({"error":"Invalid key or name"}), 409
+        if not 0 < len(str(name)) < 20 or not r.get(f"user_secret:{name}") or not key \
+                or key != r.get(f"user_secret:{name}").decode('utf-8'):
+            return jsonify({"error": "Invalid key or name"}), 409
         if not info or len(info) > 10000:
-            return jsonify({"error":"info is requseted and must be less than 10000 characters"}), 410
+            return jsonify({"error": "info is requseted and must be less than 10000 characters"}), 410
         report_time = info.get("report_time")
         if not report_time:
-            return jsonify({"error":"report_time is requseted in info"}), 411
+            return jsonify({"error": "report_time is requseted in info"}), 411
         r.hset(f"public_info:{name}", f"{report_time}", json.dumps(info))
         # 保留最新100条
         all_keys = r.hkeys(f"public_info:{name}")
@@ -142,24 +148,26 @@ def set_pub_info():
         return jsonify({"status": "ok", "message": "Public info updated successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
+
 @api_bp.route('/request_secret', methods=['POST'])
 def request_secret():
     try:
         key = request.headers.get('API-KEY')
         name = request.form.get('name') or request.json.get('name')
         if r.get(f"user_secret:{name}") is not None:
-            return jsonify({"error":"name already exists"}), 409
+            return jsonify({"error": "name already exists"}), 409
         if not 0 < len(str(name)) < 20:
-            return jsonify({"error":"name is requseted,>0,<20"}), 410
+            return jsonify({"error": "name is requseted,>0,<20"}), 410
         if key != SECRET_KEY:
             return jsonify({"error": "Invalid key"}), 403
         else:
-            s = secrets.token_hex(16)
-            r.set(f"user_secret:{name}",f"{s}")
+            s = f"user-{name}-{secrets.token_hex(16)}"
+            r.set(f"user_secret:{name}", f"{s}")
             return jsonify({"secret_key": f"{s}", "message": "Secret key created successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/del_secret', methods=['DELETE', 'POST'])
 def del_secret():
@@ -167,7 +175,7 @@ def del_secret():
         key = request.headers.get('API-KEY')
         name = request.form.get('name') or request.json.get('name')
         if r.get(f"user_secret:{name}") is None:
-            return jsonify({"error":"name not exists"}), 409
+            return jsonify({"error": "name not exists"}), 409
         if key != SECRET_KEY:
             return jsonify({"error": "Invalid key"}), 403
         else:
@@ -176,6 +184,7 @@ def del_secret():
             return jsonify({"status": "ok", "message": "Deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/get_all_request_secret', methods=['GET'])
 def get_all_request_secret():
@@ -190,6 +199,7 @@ def get_all_request_secret():
         return jsonify({"data": result}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @api_bp.route('/set_info', methods=['POST'])
 def set_info():
@@ -368,10 +378,10 @@ def get_deployment_info():
         "git_hash": "4b43f84"
     }
     try:
-        access_count=int(access_count)
+        access_count = int(access_count)
     except ValueError:
-        access_count =0
-    access_count=access_count+1
+        access_count = 0
+    access_count = access_count + 1
     set_data("access_count", str(access_count))
     return jsonify(deployment_info), 200
 
@@ -409,7 +419,8 @@ def proxy_xlog():
         return resp, 200
     try:
         response = requests.get(url="https://xlog.not404.cc/api/pages?characterId=50877&type=post&"
-                                "type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest", timeout=10)
+                                    "type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest",
+                                timeout=10)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     if response.status_code == 200:
@@ -478,9 +489,9 @@ def leave_message_route():
     if not secret:
         return jsonify({"error": "未配置 recaptcha.secret"}), 400
     token = (
-        request.form.get("g-recaptcha-response")
-        or (request.get_json(silent=True) or {}).get("recaptcha_token")
-        or request.headers.get("Recaptcha-Token")
+            request.form.get("g-recaptcha-response")
+            or (request.get_json(silent=True) or {}).get("recaptcha_token")
+            or request.headers.get("Recaptcha-Token")
     )
     if not token:
         return jsonify({"error": "recaptcha token missing"}), 400
@@ -505,7 +516,7 @@ def leave_message_route():
         client_ip = client_ip.split(",")[0].strip()
     user_agent = request.headers.get('User-Agent')
     loc = locateip(client_ip)
-    location = "未知" if not loc else f"{loc.get('country','未知')} {loc.get('subdiv','')} {loc.get('city','')}"
+    location = "未知" if not loc else f"{loc.get('country', '未知')} {loc.get('subdiv', '')} {loc.get('city', '')}"
     try:
         resp = requests.post(
             "https://www.google.com/recaptcha/api/siteverify",
@@ -524,7 +535,7 @@ def leave_message_route():
             "name": name,
             "content": content,
             "email": email,
-            "user_agent":user_agent,
+            "user_agent": user_agent,
             "location": location,
             "report_time": report_time
         }
@@ -535,9 +546,6 @@ def leave_message_route():
 
     # Fallback to ensure a valid response is always returned
     return jsonify({"error": "unexpected server error"}), 500
-
-
-
 
 
 @api_bp.route('/get_messages', methods=['GET'])

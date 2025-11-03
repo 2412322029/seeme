@@ -251,8 +251,29 @@ def set_limit(args):
         logger.error(f"Unexpected error: {str(e)}")
 
 
+def check_network_requests(url="https://www.baidu.com", timeout=5):
+    """使用HTTP请求检测网络连接"""
+    try:
+        response = requests.get(url, timeout=timeout)
+        return response.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
+
+
 def get_allServerIcon(args):
     url = args.url + "/get_allIcon"
+    times = 0
+    while True:
+        if check_network_requests(url=args.url):
+            logger.info(f"{args.url} is reachable.")
+            break
+        else:
+            if times < 5:
+                logger.warning(f"{args.url} is unreachable. Retry {times} times...")
+            # 指数退避等待
+            times += 1 if times < 6 else 0
+            wait_time = min(60, (2 ** times) + 10)
+            time.sleep(wait_time)
     try:
         response = requests.get(url)
         if response.status_code == 200:
