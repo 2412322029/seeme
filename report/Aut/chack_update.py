@@ -50,7 +50,7 @@ def test_conn():
 
 
 @run_in_thread
-def get_update_info(update_source, s):
+def get_update_info(update_source, s, alert=True):
     try:
         if update_source == "github":
             url = "https://api.github.com/repos/2412322029/seeme/releases/latest"
@@ -59,7 +59,7 @@ def get_update_info(update_source, s):
         else:
             logger.error("unknown update source")
             return
-        print(f"use {url}")
+        print(f"使用更新源: {url}")
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
@@ -88,10 +88,10 @@ def get_update_info(update_source, s):
                 return info
             else:
                 s.update_info = info
-                if __version__ >= info["version"]:
+                if __version__ >= info["version"] and alert:
                     messagebox.showinfo(f"info", f"{__version__}是最新版。{__version__} ->"
                                                  f" {info["version"]}\n{info["body"]}")
-                elif __version__ < info["version"]:
+                if __version__ < info["version"]:
                     messagebox.askquestion(f"有新版本!", f"{__version__} ->"
                                                          f" {info["version"]}\n{info["body"]}")
                     s.info_label.config(text=f"{info["version"]} is new ,"

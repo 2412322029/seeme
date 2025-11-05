@@ -424,8 +424,9 @@ def proxy_xlog():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     if response.status_code == 200:
-        # 缓存1天
-        r.set("xlog", json.dumps(response.json()), ex=3600 * 24)
+        if not response.json()['count'] == 0:
+            # 缓存1天
+            r.set("xlog", json.dumps(response.json()), ex=3600 * 24)
     else:
         return jsonify({"error": "Failed to fetch data"}), 500
     return response.json()

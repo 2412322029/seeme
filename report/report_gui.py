@@ -460,7 +460,7 @@ class mainWindows(ttk.Frame):
         ttk.Label(row, text="自动检查更新频率:").grid(row=9, column=0, padx=5, pady=5, sticky="w")
         self.check_frequency_var = ttk.StringVar(value="每天")
         self.check_frequency_var.trace("w", self.on_check_frequency_changed)
-        (ttk.Combobox(row, textvariable=self.check_frequency_var, values=["每天", "每周", "从不"], state="readonly")
+        (ttk.Combobox(row, textvariable=self.check_frequency_var, values=["每次启动", "每天", "每周", "从不"], state="readonly")
          .grid(row=9, column=1, padx=5, pady=5, sticky="ew"))
 
         button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
@@ -585,20 +585,22 @@ class mainWindows(ttk.Frame):
         last_update_time_o = datetime.strptime(last_update_time, "%Y-%m-%d %H:%M:%S")
         now = datetime.now()
         check_frequency = self.check_frequency_var.get()
+
         if check_frequency == "每天":
             t_delta = timedelta(days=1)
         elif check_frequency == "每周":
             t_delta = timedelta(weeks=1)
         elif check_frequency == "从不":
             t_delta = timedelta(days=365 * 100)  # 相当于 "从不"
+        elif check_frequency == "每次启动":
+            t_delta = timedelta(days=1)
         else:
-            self.check_frequency_var.set("每周")
+            #self.check_frequency_var.set("每周")
             t_delta = timedelta(weeks=1)
-        if now - last_update_time_o >= t_delta:
-            print(f"需要更新  上传更新时间:{last_update_time}")
-            Aut.get_update_info(self.update_source_var.get(), self)
-        else:
-            print(f"不需要更新  上次更新时间: {last_update_time}")
+            print("更新频率设置错误")
+        if now - last_update_time_o >= t_delta or check_frequency=='每次启动':
+            print(f"获取更新  上次更新时间:{last_update_time}")
+            Aut.get_update_info(self.update_source_var.get(), self, alert=False)
 
     def create_usage(self):
         row = ttk.Frame()

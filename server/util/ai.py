@@ -31,6 +31,7 @@ def del_cache():
 def gen_prompt():
     s = ""
     d = get_all_types_data()
+   # print(d)
     for k, v in d.items():
         s += f'这是{k}类型的活动数据'
         for item in v:
@@ -41,11 +42,12 @@ def gen_prompt():
     return s
 
 
-def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过400字"
-                                            "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条)"):
+def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过500字"
+                                            "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条),可以使用html格式"):
     if cfg.get("without_redis"):
         return (i for i in [f"data: without_redis no cache!\n\n"])
     cache_key = 'openai_response:' + hashlib.md5(prompt.encode()).hexdigest()
+    print(f"{cache_key=}")
     # 尝试从 Redis 中获取缓存
     cached_response = r.get(cache_key)
     if cached_response:
@@ -72,7 +74,7 @@ def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数�
             }
             try:
                 completion = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="deepseek-v3.2-exp",
                     messages=[{
                         "role": "system",
                         "content": tip
