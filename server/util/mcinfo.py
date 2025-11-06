@@ -1,5 +1,3 @@
-import json
-
 from mcstatus import JavaServer
 from mcstatus.status_response import JavaStatusResponse, JavaStatusPlayer
 
@@ -15,20 +13,14 @@ def JavaStatusPlayer2list(j: list[JavaStatusPlayer] | None):
 
 def JavaStatusResponse2json(s: JavaStatusResponse):
     json_str = {
-        "version": {
-            "name": s.version.name,
-            "protocol": s.version.protocol
-        },
+        "version": {"name": s.version.name, "protocol": s.version.protocol},
         "players": {
             "online": s.players.online,
             "max": s.players.max,
-            "sample": JavaStatusPlayer2list(s.players.sample)
+            "sample": JavaStatusPlayer2list(s.players.sample),
         },
-        "motd": {
-            "plain": s.motd.to_plain(),
-            "html": s.motd.to_html()
-        },
-        "icon": s.icon
+        "motd": {"plain": s.motd.to_plain(), "html": s.motd.to_html()},
+        "icon": s.icon,
     }
     return json_str
 
@@ -51,6 +43,6 @@ def mclatency(address: str):
         return {"error": f"{str(e)}"}
 
 
-if __name__ == '__main__':
-    print(mclatency("demo.mcstatus.io:25565"))
-    print(mcinfo("demo.mcstatus.io:25565"))
+if __name__ == "__main__":
+    print(mclatency("dx.frp-arm.com:24561"))
+    print(mcinfo("dx.frp-arm.com:24561"))

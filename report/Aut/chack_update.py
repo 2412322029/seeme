@@ -89,10 +89,10 @@ def get_update_info(update_source, s, alert=True):
             else:
                 s.update_info = info
                 if __version__ >= info["version"] and alert:
-                    messagebox.showinfo(f"info", f"{__version__}是最新版。{__version__} ->"
+                    messagebox.showinfo("info", f"{__version__}是最新版。{__version__} ->"
                                                  f" {info["version"]}\n{info["body"]}")
                 if __version__ < info["version"]:
-                    messagebox.askquestion(f"有新版本!", f"{__version__} ->"
+                    messagebox.askquestion("有新版本!", f"{__version__} ->"
                                                          f" {info["version"]}\n{info["body"]}")
                     s.info_label.config(text=f"{info["version"]} is new ,"
                                              f" Click to download", state="normal", cursor="hand2")

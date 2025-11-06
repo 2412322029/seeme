@@ -27,6 +27,7 @@ Auth = ""
 [openai]
 base_url = "https://api.uniapi.io/v1"
 api_key = "sk-xxx"
+model = "deepseek-v3.2-exp"
 #openai配置 api_key: https://platform.openai.com/account/api-keys
 
 [recaptcha]

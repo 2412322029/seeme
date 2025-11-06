@@ -9,8 +9,9 @@ from .rediscache import r, get_all_types_data
 
 client = OpenAI(
     base_url=cfg.get("openai", {}).get("base_url", ""),
-    api_key=cfg.get("openai", {}).get("api_key", "")
+    api_key=cfg.get("openai", {}).get("api_key", ""),
 )
+model = cfg.get("openai", {}).get("model", "")
 
 
 def limit_cache(max_items=1):
@@ -31,22 +32,25 @@ def del_cache():
 def gen_prompt():
     s = ""
     d = get_all_types_data()
-   # print(d)
+    # print(d)
     for k, v in d.items():
-        s += f'这是{k}类型的活动数据'
+        s += f"这是{k}类型的活动数据"
         for item in v:
-            s += '\n'
+            s += "\n"
             for i, j in item.items():
-                s += f'{i}::{j}|'
-        s += '\n'
+                s += f"{i}::{j}|"
+        s += "\n"
     return s
 
 
-def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过500字"
-                                            "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条),可以使用html格式"):
+def completion_api(
+    prompt=gen_prompt(),
+    tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过500字"
+    "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条),可以使用html格式",
+):
     if cfg.get("without_redis"):
-        return (i for i in [f"data: without_redis no cache!\n\n"])
-    cache_key = 'openai_response:' + hashlib.md5(prompt.encode()).hexdigest()
+        return (i for i in ["data: without_redis no cache!\n\n"])
+    cache_key = "openai_response:" + hashlib.md5(prompt.encode()).hexdigest()
     print(f"{cache_key=}")
     # 尝试从 Redis 中获取缓存
     cached_response = r.get(cache_key)
@@ -57,39 +61,34 @@ def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数�
 
         # print(data)
         def stream():
-            yield f"data: [cached at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(generated_at))}]<br>\n\n"
+            yield f"data: [{model}][cached at {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(generated_at))}]<br>\n\n"
             for chunk in data.split("\n"):
                 if chunk:
-                    chunk = chunk.replace('\n', '')  # 先处理换行符
+                    chunk = chunk.replace("\n", "")  # 先处理换行符
                     yield f"data: {chunk}\n\n"
-            yield f"event: end"
+            yield "event: end"
 
         return stream()
     else:
+
         def stream():
-            yield "data: [cache miss, generating response]<br>\n\n"
-            response_data = {
-                "data": "",
-                "generated_at": int(time.time())
-            }
+            yield f"data: [{model}][cache miss, generating response]<br>\n\n"
+            response_data = {"data": "", "generated_at": int(time.time())}
             try:
                 completion = client.chat.completions.create(
-                    model="deepseek-v3.2-exp",
-                    messages=[{
-                        "role": "system",
-                        "content": tip
-                    }, {
-                        "role": "user",
-                        "content": prompt
-                    }],
-                    stream=True
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": tip},
+                        {"role": "user", "content": prompt},
+                    ],
+                    stream=True,
                 )
                 for chunk in completion:
                     chunk = chunk.choices[0].delta.content or ""
                     if chunk:
                         response_data["data"] += chunk
                         yield f"data: {chunk}\n\n"
-                yield f"event: end"
+                yield "event: end"
 
                 limit_cache()  # 限制缓存条目数量
                 r.set(cache_key, json.dumps(response_data))
@@ -100,7 +99,7 @@ def completion_api(prompt=gen_prompt(), tip="你是总结员,只输出下面数�
         return stream()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # del_cache()
     for i in completion_api():
         print(i)

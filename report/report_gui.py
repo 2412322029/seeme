@@ -218,7 +218,7 @@ class mainWindows(ttk.Frame):
         self.startup2 = ttk.Checkbutton(btn2_frame, text="开机启动", variable=self.startup2_var,
                                         command=on_toggle2, width=10)
         self.startup2.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        ToolTip(self.startup2, f"no",
+        ToolTip(self.startup2, "no",
                 at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report-aut')}"))
         self.tree2 = ttk.Treeview(lf2, columns=("k", "v"), show="", height=5)
         self.tree2.pack(fill="both", expand=True)
@@ -246,7 +246,7 @@ class mainWindows(ttk.Frame):
 
     def run_report(self):
         if is_process_running(read_pid(pid_file)):
-            messagebox.showerror("错误", f"已经在运行!")
+            messagebox.showerror("错误", "已经在运行!")
             return
         if not self.key or not self.url:
             messagebox.showerror("错误", f"{self.key=},{self.url=}")
@@ -266,7 +266,7 @@ class mainWindows(ttk.Frame):
 
     def run_aut(self):
         if is_process_running(read_pid(Aut.aut_pid_file)):
-            messagebox.showinfo("info", f"已经在运行!")
+            messagebox.showinfo("info", "已经在运行!")
             return
         if os.path.exists(os.path.join(os.path.dirname(__file__), "report.exe ")):
             _args = ["report.exe", "aut"]
@@ -316,7 +316,7 @@ class mainWindows(ttk.Frame):
         err, info = check_process(pf, pt=False, check_pause=check_pause)
         if err:
             tr.insert("", "end", values=("Error", f"{err}"))
-            tr.insert("", "end", values=("Stop", f"stop update process info"))
+            tr.insert("", "end", values=("Stop", "stop update process info"))
             raise Exception(f'更新进程状态信息出错 {err}')
         tr.tag_configure("running", foreground="green")
         tr.tag_configure("stop", foreground="red")
@@ -637,7 +637,7 @@ class mainWindows(ttk.Frame):
 
     def load_usage_data(self):
         f: Future = Aut.get_total_duration_for_all()
-        self.canvas_at.config(text=f"加载中")
+        self.canvas_at.config(text="加载中")
 
         def get_show(future):
             try:
@@ -736,7 +736,7 @@ class mainWindows(ttk.Frame):
         zip_name, zip_url, sum_name, sum_url = None, None, None, None
         self.is_download = True
         for asset in self.update_info["assets"]:  # 暂时这样
-            if asset["name"].endswith(f".zip") and "dist" in asset["name"]:
+            if asset["name"].endswith(".zip") and "dist" in asset["name"]:
                 zip_name = asset["name"]
                 zip_url = asset["url"]
         for asset in self.update_info["assets"]:
@@ -780,9 +780,9 @@ class mainWindows(ttk.Frame):
                            cursor="hand2")
         label2.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         label2.bind("<Button-1>", open_url)
-        ttk.Label(self.about_row, text=f"version:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
+        ttk.Label(self.about_row, text="version:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
         ttk.Label(self.about_row, text=f"{Aut.__version__}").grid(row=1, column=1, padx=5, pady=5, sticky="w")
-        ttk.Label(self.about_row, text=f"build time:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
+        ttk.Label(self.about_row, text="build time:").grid(row=2, column=0, padx=5, pady=5, sticky="e")
         ttk.Label(self.about_row, text=f"{Aut.__buildAt__}").grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
         self.info_label = ttk.Label(self.about_row, text="当前是最新版", foreground="#2AADFF")

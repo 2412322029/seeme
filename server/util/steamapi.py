@@ -10,12 +10,22 @@ def steam_info():
         return {"steam_enable": False}
     steam_id = cfg.get("steam", {}).get("steam_id", "")
     steam_key = cfg.get("steam", {}).get("steam_key", "")
-    resp = requests.get(f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
-                        f"?key={steam_key}&steamids={steam_id}")
+    resp = requests.get(
+        f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
+        f"?key={steam_key}&steamids={steam_id}"
+    )
     if resp.status_code == 200:
-        return {"steam_enable": True, "status_code": resp.status_code, "data": resp.json()}
+        return {
+            "steam_enable": True,
+            "status_code": resp.status_code,
+            "data": resp.json(),
+        }
     else:
-        return {"steam_enable": True, "status_code": resp.status_code, "text": resp.text}
+        return {
+            "steam_enable": True,
+            "status_code": resp.status_code,
+            "text": resp.text,
+        }
 
 
 @functools.lru_cache(maxsize=1)
@@ -25,16 +35,28 @@ def steam_friend_list(ret_ids=False, t=None):
     steam_id = cfg.get("steam", {}).get("steam_id", "")
     steam_key = cfg.get("steam", {}).get("steam_key", "")
     try:
-        resp = requests.get(f"https://api.steampowered.com/ISteamUser/GetFriendList/v1/"
-                            f"?key={steam_key}&steamid={steam_id}#{t}")
+        resp = requests.get(
+            f"https://api.steampowered.com/ISteamUser/GetFriendList/v1/"
+            f"?key={steam_key}&steamid={steam_id}#{t}"
+        )
         if not ret_ids:
             if resp.status_code == 200:
-                return {"steam_enable": True, "status_code": resp.status_code, "data": resp.json()}
+                return {
+                    "steam_enable": True,
+                    "status_code": resp.status_code,
+                    "data": resp.json(),
+                }
             else:
-                return {"steam_enable": True, "status_code": resp.status_code, "text": resp.text}
+                return {
+                    "steam_enable": True,
+                    "status_code": resp.status_code,
+                    "text": resp.text,
+                }
         else:
             if resp.status_code == 200:
-                return ','.join([i['steamid'] for i in resp.json()['friendslist']['friends']])
+                return ",".join(
+                    [i["steamid"] for i in resp.json()["friendslist"]["friends"]]
+                )
             else:
                 return None
     except Exception:
@@ -45,7 +67,7 @@ steam_ids = steam_friend_list(ret_ids=True)
 
 
 def sort_players(players):
-    """ 
+    """
     Sort players so that online players come first, then by lastlogoff (most recent first).
     Online is defined as personastate > 0.
     """
@@ -55,8 +77,8 @@ def sort_players(players):
         players,
         key=lambda p: (
             0 if p.get("personastate", 0) > 0 else 1,
-            -int(p.get("lastlogoff", 0))
-        )
+            -int(p.get("lastlogoff", 0)),
+        ),
     )
 
 
@@ -81,8 +103,12 @@ def steam_friend_info():
             pass
         return {"steam_enable": True, "status_code": resp.status_code, "data": data}
     else:
-        return {"steam_enable": True, "status_code": resp.status_code, "text": resp.text}
+        return {
+            "steam_enable": True,
+            "status_code": resp.status_code,
+            "text": resp.text,
+        }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(steam_friend_info())

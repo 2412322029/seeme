@@ -88,7 +88,7 @@ def check_process(pf, check_pause=True, pt=True):
                         IF=pt)
         else:
             info["status"] = "stop"
-            ifPrint(f"status      : \033[91mstop\033[0m", IF=pt)
+            ifPrint("status      : \033[91mstop\033[0m", IF=pt)
     except (FileNotFoundError, ValueError) as e:
         err = str(e)
         logger.error(f"没有找到进程ID文件或进程不存在. {e}")

@@ -3,7 +3,7 @@ name = "seeme-server"
 version = "0.1.0"
 description = "seeme-server"
 authors = [
-    {name = "2412322029",email = "2412322029@qq.com"}
+    {name = "lolik",email = "tuwork@foxmail.com"}
 ]
 license = {text = "MIT"}
 requires-python = ">=3.10,<4"
@@ -17,14 +17,13 @@ dependencies = [
     "geoip2 (>=5.1.0,<6.0.0)"
 ]
 
+[dependency-groups]
+dev = [
+    "fabric>=3.2.2",
+    "python-dotenv>=1.2.1",
+]
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = false
 
-[tool.poetry.group.dev.dependencies]
-python-dotenv = "^1.0.1"
-fabric = "^3.2.2"
 
-[tool.poetry]
-package-mode=false

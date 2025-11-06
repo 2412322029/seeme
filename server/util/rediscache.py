@@ -9,6 +9,7 @@ if cfg.get("without_redis"):
     print("use mycache 不支持多线程!")
 else:
     import redis
+
     r = redis.StrictRedis(**cfg.get("redis"))
     print("use redis")
 
@@ -24,7 +25,7 @@ def if_decode(s: any):
         return s
     elif isinstance(s, bytes):
         # 修复乱码：正确使用 utf-8 解码
-        return s.decode('utf-8')
+        return s.decode("utf-8")
     else:
         return s
 
@@ -50,12 +51,12 @@ def key_to_ts(k: any) -> int:
 
     # 尝试多种常见的时间格式
     fmts = (
-        '%Y/%m/%d %H:%M:%S',
-        '%Y-%m-%d %H:%M:%S',
-        '%Y/%m/%d %H:%M',
-        '%Y-%m-%d %H:%M',
-        '%Y/%m/%d',
-        '%Y-%m-%d',
+        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%Y-%m-%d %H:%M",
+        "%Y/%m/%d",
+        "%Y-%m-%d",
     )
     for fmt in fmts:
         try:
@@ -121,14 +122,16 @@ def get_1type_data(t, i=None):
     """
 
     if i:
-        return json.loads(r.hget(t, i) or '{}')
+        return json.loads(r.hget(t, i) or "{}")
     else:
         items = r.hgetall(t)
         # decode keys/values
         items = {if_decode(ik): json.loads(if_decode(iv)) for ik, iv in items.items()}
         # 按时间排序（使用 key_to_ts 支持多种 key 格式）
         sorted_items = sorted(items.items(), key=lambda x: key_to_ts(x[0]))
-        sorted_values = [value for key, value in sorted_items]  # key是2025/1/23 10:27:49或1737204278格式，按时间排序
+        sorted_values = [
+            value for key, value in sorted_items
+        ]  # key是2025/1/23 10:27:49或1737204278格式，按时间排序
         return {t: sorted_values}
 
 
@@ -164,7 +167,10 @@ def get_limit(t=None):
     if t:
         return int(r.hget("Data_limit", t))
     else:
-        return {if_decode(ik): int(if_decode(iv)) for ik, iv in r.hgetall("Data_limit").items()}
+        return {
+            if_decode(ik): int(if_decode(iv))
+            for ik, iv in r.hgetall("Data_limit").items()
+        }
 
 
 for t in get_all_types():
