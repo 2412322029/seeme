@@ -167,6 +167,7 @@ class mainWindows(ttk.Frame):
         row = ttk.Frame()
         row.pack(fill=X)
         self.notebook.add(row, text="进程管理", state="normal")
+        self.notebook.select(1)
         lf = ttk.Labelframe(row, text="报告程序")
         lf.pack(fill="both", padx=10, pady=5)
         btn_frame = ttk.Frame(lf)
@@ -226,7 +227,7 @@ class mainWindows(ttk.Frame):
         self.tree2.column("v", stretch=True)
         self.update_process_info_loop()
 
-        self.cmd_frame = ttk.LabelFrame(row, text="运行命令行命令")
+        self.cmd_frame = ttk.Labelframe(row, text="运行命令行命令")
         self.cmd_frame.pack(fill=BOTH, padx=10, pady=5)
         self.cmd_entry = ttk.Entry(self.cmd_frame, width=50)
         self.cmd_entry.pack(side=LEFT, padx=10, pady=5, anchor=W)
@@ -236,7 +237,7 @@ class mainWindows(ttk.Frame):
         self.clear_button = ttk.Button(self.cmd_frame, text="清空输出", command=self.clear_output_viewer, width=8)
         self.clear_button.pack(side=LEFT, anchor=W, padx=10, pady=5)
 
-        self.output_frame = ttk.LabelFrame(row, text="输出")
+        self.output_frame = ttk.Labelframe(row, text="输出")
         self.output_frame.pack(fill=BOTH, padx=10, pady=5)
         self.output_text = ttk.Text(self.output_frame, wrap=WORD)
         self.output_text.pack(fill=BOTH, expand=True, side=LEFT)

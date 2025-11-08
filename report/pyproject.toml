@@ -3,11 +3,10 @@ name = "report"
 version = "0.1.7"
 description = "seeme-report"
 authors = [
-    {name = "2412322029",email = "2412322029@qq.com"}
+    {name = "lolik",email = "tuwork@foxmail.com"}
 ]
 license = {text = "MIT"}
 requires-python = ">=3.12"
-readme = "../README.md"
 dependencies = [
     "pillow (>=11.1.0,<12.0.0)",
     "psutil (>=7.0.0,<8.0.0)",
@@ -18,10 +17,8 @@ dependencies = [
 ]
 
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.group.dev.dependencies]
-nuitka = "^2.6.7"
+[dependency-groups]
+dev = [
+    "nuitka>=2.8.4",
+]
 
