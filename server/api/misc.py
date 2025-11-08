@@ -3,13 +3,13 @@ import re
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
-from flask import Response, request, jsonify
+from flask import Response, jsonify, request
+from util.ai import completion_api, del_cache
+from util.config import SECRET_KEY, cfg
+from util.mcinfo import mcinfo, mclatency
+from util.rediscache import get_data, r, set_data
 
 from . import api_bp
-from util.ai import completion_api, del_cache
-from util.config import cfg
-from util.mcinfo import mcinfo, mclatency
-from util.rediscache import r, get_data, set_data
 
 
 def is_valid_address(address: str) -> bool:
@@ -57,6 +57,9 @@ def ai_summary():
 
 @api_bp.route("/del_ai_cache", methods=["GET"])
 def del_ai_cache():
+    key = request.args.get("key")
+    if key != SECRET_KEY:
+        return jsonify({"error": "Invalid key in request args"}), 403
     try:
         return f"已删除{del_cache()}条"
     except Exception as e:
@@ -65,6 +68,9 @@ def del_ai_cache():
 
 @api_bp.route("/del_xlog_cache", methods=["GET"])
 def del_xlog_cache():
+    key = request.args.get("key")
+    if key != SECRET_KEY:
+        return jsonify({"error": "Invalid key in request args"}), 403
     try:
         return f"已删除{r.delete('xlog')}"
     except Exception as e:
