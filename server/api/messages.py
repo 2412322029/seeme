@@ -1,12 +1,14 @@
+import json
 import re
 import time
-import json
-from flask import request, jsonify
+
 import requests
-from . import api_bp
-from util.config import cfg, SECRET_KEY
+from flask import jsonify, request
+from util.config import SECRET_KEY, cfg
 from util.ip import locateip
-from util.rediscache import r, del_data, get_1type_data
+from util.rediscache import del_data, key_to_ts, r
+
+from . import api_bp
 
 
 @api_bp.route("/leave_message", methods=["POST"])
@@ -80,7 +82,53 @@ def leave_message_route():
 @api_bp.route("/get_messages", methods=["GET"])
 def get_messages():
     try:
-        return get_1type_data("message")
+        try:
+            page = int(request.args.get("page", 1))
+            limit = int(request.args.get("limit", 20))
+        except Exception:
+            return jsonify({"error": "invalid pagination parameters"}), 400
+        if page < 1 or limit < 1:
+            return jsonify({"error": "page and limit must be positive integers"}), 400
+        MAX_LIMIT = 100
+        if limit > MAX_LIMIT:
+            limit = MAX_LIMIT
+        order = (request.args.get("order", "") or "").lower()
+        items = r.hgetall("message") or {}
+        if isinstance(items, dict):
+            normalized_items = {}
+            for k, v in items.items():
+                nk = k.decode() if isinstance(k, bytes) else k
+                normalized_items[nk] = v
+        else:
+            normalized_items = items
+        sorted_items = sorted(normalized_items.items(), key=lambda x: key_to_ts(x[0]) or 0, reverse=order == "desc")
+
+        total = len(sorted_items)
+        start = (page - 1) * limit
+        end = start + limit
+        page_slice = sorted_items[start:end]
+
+        results = []
+        for k, v in page_slice:
+            try:
+                obj = json.loads(v)
+            except Exception:
+                obj = v
+            results.append(obj)
+
+        total_pages = (total + limit - 1) // limit if total > 0 else 0
+        return (
+            jsonify(
+                {
+                    "message": results,
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": total_pages,
+                }
+            ),
+            200,
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
