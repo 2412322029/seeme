@@ -5,7 +5,15 @@ from dotenv import load_dotenv
 from fabric import Connection
 
 # 排除文件和文件夹
-EXCLUDE_DIRS = {"__pycache__", ".git", "venv", ".venv", "exe_icon", "logs"}
+EXCLUDE_DIRS = {
+    "__pycache__",
+    ".git",
+    "venv",
+    ".venv",
+    "exe_icon",
+    "logs",
+    ".ruff_cache",
+}
 EXCLUDE_FILES = {
     ".env",
     "config.toml",

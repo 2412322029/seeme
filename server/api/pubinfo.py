@@ -39,7 +39,9 @@ def set_pub_info():
         ):
             return jsonify({"error": "Invalid key or name"}), 409
         if not info or len(info) > 10000:
-            return jsonify({"error": "info is requseted and must be less than 10000 characters"}), 410
+            return jsonify(
+                {"error": "info is requseted and must be less than 10000 characters"}
+            ), 410
         report_time = info.get("report_time")
         if not report_time:
             return jsonify({"error": "report_time is requseted in info"}), 411
@@ -50,7 +52,9 @@ def set_pub_info():
             keys_to_delete = sorted_keys[:-100]
             for k in keys_to_delete:
                 r.hdel(f"public_info:{name}", k)
-        return jsonify({"status": "ok", "message": "Public info updated successfully"}), 200
+        return jsonify(
+            {"status": "ok", "message": "Public info updated successfully"}
+        ), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -69,7 +73,9 @@ def request_secret():
         else:
             s = f"user-{name}-{secrets.token_hex(16)}"
             r.set(f"user_secret:{name}", f"{s}")
-            return jsonify({"secret_key": f"{s}", "message": "Secret key created successfully"}), 200
+            return jsonify(
+                {"secret_key": f"{s}", "message": "Secret key created successfully"}
+            ), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

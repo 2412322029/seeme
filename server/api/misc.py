@@ -42,8 +42,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-11-05 15:33:52",
-        "git_hash": "92a9c55",
+        "deploy_time": "2025-11-09 14:27:21",
+        "git_hash": "79d82c2",
     }
     access_count = access_count + 1
     set_data("access_count", str(access_count))
@@ -114,15 +114,21 @@ def proxy():
     headers["Host"] = target_domain
     headers["Accept-Encoding"] = "identity"
     if target_domain == "api.bgm.tv":
-        headers.update({"Authorization": "Bearer " + str(cfg.get("bgm", {}).get("Auth", ""))})
+        headers.update(
+            {"Authorization": "Bearer " + str(cfg.get("bgm", {}).get("Auth", ""))}
+        )
     query_params = parse_qs(request.query_string.decode("utf-8"))
     query_params.pop("url", None)
     additional_query_string = urlencode(query_params, doseq=True)
     if additional_query_string:
         target_url = urlunparse(parsed_url._replace(query=additional_query_string))
     try:
-        response = requests.get(url=target_url, headers=headers, stream=True, timeout=10)
-        resp = Response(response.iter_content(chunk_size=1024), status=response.status_code)
+        response = requests.get(
+            url=target_url, headers=headers, stream=True, timeout=10
+        )
+        resp = Response(
+            response.iter_content(chunk_size=1024), status=response.status_code
+        )
         hop_by_hop_headers = [
             "connection",
             "keep-alive",

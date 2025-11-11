@@ -8,6 +8,7 @@ import requests
 from dotenv import load_dotenv
 from fabric import Connection
 from sum import compare_sum_txt
+from pathlib import Path
 
 # 加载.env文件中的配置
 load_dotenv()
@@ -56,9 +57,9 @@ def build_frontend_with_copy():
 
 def update_deployment_info(DEPLOY_TIME, GIT_HASH):
     """
-    使用正则表达式更新 main.py 中的部署时间和 Git 哈希值
+    使用正则表达式更新 api/misc.py 中的部署时间和 Git 哈希值
     """
-    filename = "main.py"
+    filename = Path("api") / "misc.py"
     with open(filename, "r", encoding="utf8") as file:
         content = file.read()
     content = re.sub(

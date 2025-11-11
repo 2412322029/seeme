@@ -101,7 +101,11 @@ def get_messages():
                 normalized_items[nk] = v
         else:
             normalized_items = items
-        sorted_items = sorted(normalized_items.items(), key=lambda x: key_to_ts(x[0]) or 0, reverse=order == "desc")
+        sorted_items = sorted(
+            normalized_items.items(),
+            key=lambda x: key_to_ts(x[0]) or 0,
+            reverse=order == "desc",
+        )
 
         total = len(sorted_items)
         start = (page - 1) * limit
@@ -150,8 +154,12 @@ def del_message():
 
         removed_count = del_data("message", report_time)
         if removed_count > 0:
-            return jsonify({"message": f"Removed {removed_count} item(s) from message"}), 200
+            return jsonify(
+                {"message": f"Removed {removed_count} item(s) from message"}
+            ), 200
         else:
-            return jsonify({"message": "No items found with the specified report_time"}), 404
+            return jsonify(
+                {"message": "No items found with the specified report_time"}
+            ), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500

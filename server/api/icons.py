@@ -30,7 +30,9 @@ def upload_exeIcon():
             saved_files.append(filename)
         else:
             return jsonify({"error": "Invalid file type only support .png"}), 400
-    return jsonify({"message": "File uploaded successfully", "filename": saved_files}), 200
+    return jsonify(
+        {"message": "File uploaded successfully", "filename": saved_files}
+    ), 200
 
 
 @api_bp.route("/get_allIcon", methods=["GET"])

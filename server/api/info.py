@@ -50,7 +50,9 @@ def set_info():
             case "browser":
                 title = request.form.get("title")
                 url = request.form.get("url")
-                put_data("browser", {"title": title, "url": url, "report_time": report_time})
+                put_data(
+                    "browser", {"title": title, "url": url, "report_time": report_time}
+                )
             case "phone":
                 apps = request.json.get("app")
                 battery_level = request.json.get("battery_level")
@@ -90,9 +92,13 @@ def del_info():
     if info_type in get_all_types():
         removed_count = del_data(info_type, report_time)
         if removed_count > 0:
-            return jsonify({"message": f"Removed {removed_count} item(s) from {info_type}"}), 200
+            return jsonify(
+                {"message": f"Removed {removed_count} item(s) from {info_type}"}
+            ), 200
         else:
-            return jsonify({"message": "No items found with the specified report_time"}), 404
+            return jsonify(
+                {"message": "No items found with the specified report_time"}
+            ), 404
     else:
         return jsonify({"message": "Type not found"}), 404
 
