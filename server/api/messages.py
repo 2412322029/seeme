@@ -5,7 +5,8 @@ import time
 import requests
 from flask import jsonify, request
 from util.config import SECRET_KEY, cfg
-from util.ip import locateip
+from util.ip import ip_api
+from util.notification import notify
 from util.rediscache import del_data, key_to_ts, r
 
 from . import api_bp
@@ -43,12 +44,7 @@ def leave_message_route():
     if client_ip:
         client_ip = client_ip.split(",")[0].strip()
     user_agent = request.headers.get("User-Agent")
-    loc = locateip(client_ip)
-    location = (
-        "未知"
-        if not loc
-        else f"{loc.get('country', '未知')} {loc.get('subdiv', '')} {loc.get('city', '')}"
-    )
+    location = ip_api(client_ip)
     try:
         resp = requests.post(
             "https://www.google.com/recaptcha/api/siteverify",
@@ -72,6 +68,12 @@ def leave_message_route():
             "report_time": report_time,
         }
         r.hset("message", entry["report_time"], json.dumps(entry))
+        content = f"""
+        name: {name} \nEmail:{email}\n
+        client_ip: {client_ip}\n Location: {location}\n UA: {user_agent}\n 
+        Content: {content}
+        """
+        notify("网站新留言", content=content, type="markdown")
         return jsonify({"status": "ok", "entry": entry}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

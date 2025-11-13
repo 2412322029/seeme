@@ -33,3 +33,11 @@ model = "deepseek-v3.2-exp"
 [recaptcha]
 secret=""
 #recaptcha v2 secret key https://www.google.com/recaptcha/admin/create
+
+[notification]
+enable = false
+methods = "pushplus"
+
+# PushPlus https://www.pushplus.plus/
+[notification.pushplus]
+token = "" 

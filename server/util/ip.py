@@ -1,13 +1,6 @@
 import ipaddress
-from pathlib import Path
-import geoip2.database
 
-DB_FILE = Path(__file__).with_name("GeoLite2-City.mmdb")
-if not DB_FILE.is_file():
-    raise SystemExit(
-        f"{DB_FILE} not found, please download it from https://github.com/P3TERX/GeoLite.mmdb"
-    )
-reader = geoip2.database.Reader(DB_FILE)
+import requests
 
 
 def is_public_ip(ip: str) -> bool:
@@ -25,24 +18,26 @@ def is_public_ip(ip: str) -> bool:
         return False
 
 
-def locateip(ip):
+def ip_api(domain: str) -> str:
+    if not is_public_ip(domain):
+        return domain
     try:
-        if not is_public_ip(ip):
-            return None
-        r = reader.city(ip)
-        return {
-            "country": r.country.name,
-            "country_iso": r.country.iso_code,
-            "subdiv": r.subdivisions.most_specific.name,  # 省/州
-            "city": r.city.name,
-            "lat": r.location.latitude,
-            "lon": r.location.longitude,
-            "tz": r.location.time_zone,
-            "postal": r.postal.code,
+        url = "http://ip-api.com/json/" + domain
+        headers = {
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.8",
+            "Cache-Control": "max-age=0",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142 Safari/537.36",
+            "Connection": "keep-alive",
+            "Referer": "http://www.baidu.com/",
         }
-    except geoip2.errors.AddressNotFoundError:
-        return None
+        resp = requests.get(url, headers=headers, timeout=5).json()
+        if resp.get("status") != "success":
+            return resp["regionName"] + " " + resp["city"]
+        return domain
+    except Exception:
+        return domain
 
 
 if __name__ == "__main__":
-    print(locateip("223.77.170.173"))
+    print(ip_api("223.77.170.173"))
