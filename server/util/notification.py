@@ -1,7 +1,8 @@
 import json
 
 import requests
-from config import cfg
+
+from util.config import cfg
 
 
 def notify(title, content, type):
