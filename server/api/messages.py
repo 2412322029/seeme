@@ -4,6 +4,7 @@ import time
 
 import requests
 from flask import jsonify, request
+
 from util.config import SECRET_KEY, cfg
 from util.ip import ip_api
 from util.notification import notify
@@ -69,11 +70,16 @@ def leave_message_route():
         }
         r.hset("message", entry["report_time"], json.dumps(entry))
         content = f"""
-        name: {name} \nEmail:{email}\n
-        client_ip: {client_ip}\n Location: {location}\n UA: {user_agent}\n 
-        Content: {content}
+        - **姓名**: {name or "N/A"}
+        - **Email**: {email or "N/A"}
+        - **时间**: `{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}`
+        - **IP**: `{client_ip}`
+        - **位置**: `{location}`
+        - **UA**: `{user_agent}`
+        **内容**: 
+        {content}
         """
-        notify("网站新留言", content=content, type="markdown")
+        notify("网站新留言", content=content)
         return jsonify({"status": "ok", "entry": entry}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

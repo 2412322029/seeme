@@ -32,7 +32,7 @@ def ip_api(domain: str) -> str:
             "Referer": "http://www.baidu.com/",
         }
         resp = requests.get(url, headers=headers, timeout=5).json()
-        if resp.get("status") != "success":
+        if resp.get("status") == "success":
             return resp["regionName"] + " " + resp["city"]
         return domain
     except Exception:

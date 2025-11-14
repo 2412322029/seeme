@@ -35,7 +35,7 @@ secret=""
 #recaptcha v2 secret key https://www.google.com/recaptcha/admin/create
 
 [notification]
-enable = false
+enabled = false
 methods = "pushplus"
 
 # PushPlus https://www.pushplus.plus/

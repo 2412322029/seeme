@@ -1,6 +1,7 @@
 import hashlib
 import os
 import sys
+
 from dotenv import load_dotenv
 from fabric import Connection
 
@@ -16,7 +17,6 @@ EXCLUDE_DIRS = {
 }
 EXCLUDE_FILES = {
     ".env",
-    "config.toml",
     "config-example.toml",
     "data.json",
     "sum.txt",
