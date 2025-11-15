@@ -9,7 +9,7 @@ license = {text = "MIT"}
 requires-python = ">=3.10,<4"
 dependencies = [
     "flask (>=3.1.0,<4.0.0)",
-    "mcstatus (>=11.1.1,<12.0.0)",
+    "mcstatus (>=12.00,<=12.0.6)",
     "redis (>=5.2.1,<6.0.0)",
     "toml (>=0.10.2,<0.11.0)",
     "requests (>=2.32.3,<3.0.0)",

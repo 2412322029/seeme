@@ -4,9 +4,10 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 from flask import Response, jsonify, request
+
 from util.ai import completion_api, del_cache
 from util.config import SECRET_KEY, cfg
-from util.mcinfo import mcinfo, mclatency
+from util.mcinfo import mcinfo
 from util.rediscache import get_data, r, set_data
 
 from . import api_bp
@@ -17,18 +18,13 @@ def is_valid_address(address: str) -> bool:
     return re.match(pattern, address) is not None
 
 
-@api_bp.route("/get_mcinfo/<address>")
-def get_mcinfo(address: str):
+@api_bp.route("/get_mcinfo/<type>/<address>", methods=["GET"])
+def get_mcinfo(type: str, address: str):
+    type = type.lower()
+    if type not in ("auto", "java", "bedrock"):
+        return {"error": "类型错误，应为 auto/java/bedrock 之一"}
     if is_valid_address(address):
-        return jsonify(mcinfo(address)), 200
-    else:
-        return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
-
-
-@api_bp.route("/get_mclatency/<address>")
-def get_mclatency(address: str):
-    if is_valid_address(address):
-        return jsonify(mclatency(address)), 200
+        return jsonify(mcinfo(address, protocol=type)), 200
     else:
         return jsonify({"error": f"{address} <host:port> 错误的地址"}), 400
 
@@ -42,8 +38,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-11-13 23:52:35",
-        "git_hash": "061574f",
+        "deploy_time": "2025-11-14 14:13:34",
+        "git_hash": "747f20a",
     }
     access_count = access_count + 1
     set_data("access_count", str(access_count))
