@@ -1,17 +1,19 @@
 import json
 from datetime import datetime
 
+from util.logger import logger
+
 from .config import cfg
 from .mycache import MyCache
 
 if cfg.get("without_redis"):
     r = MyCache()
-    print("use mycache 不支持多线程!")
+    logger.info("use mycache 不支持多线程!")
 else:
     import redis
 
     r = redis.StrictRedis(**cfg.get("redis"))
-    print("use redis")
+    logger.info("use redis")
 
 Data_limit_default = cfg.get("Data_limit_default")
 assert isinstance(Data_limit_default, dict), "Data_limit_default must be a dictionary"

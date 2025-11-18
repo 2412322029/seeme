@@ -1,5 +1,6 @@
 import requests
 
+from util.logger import logger
 from util.config import cfg
 
 
@@ -10,7 +11,7 @@ def notify(title, content):
     if "pushplus" in methods:
         pushplus_notify(title, content)
     else:
-        print("No notification method configured.")
+        logger.error("No notification method configured.")
 
 
 def pushplus_notify(title, content: str):
@@ -27,6 +28,6 @@ def pushplus_notify(title, content: str):
     headers = {"Content-Type": "application/json"}
     resp = requests.post(url, json=data, headers=headers).json()
     if resp.get("code") != 200:
-        print("Pushplus notification failed:", resp)
+        logger.error("Pushplus notification failed:", resp)
     else:
-        print(f"Pushplus notification sent successfully. {resp}")
+        logger.info(f"Pushplus notification sent successfully. {resp}")

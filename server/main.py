@@ -1,5 +1,6 @@
-from api import api_bp, register_submodules
 from flask import Flask
+
+from api import api_bp, register_submodules
 
 app = Flask(__name__)
 

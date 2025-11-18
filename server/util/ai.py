@@ -2,10 +2,13 @@ import hashlib
 import json
 import time
 import traceback
+
 from openai import OpenAI
 
+from util.logger import logger
+
 from .config import cfg
-from .rediscache import r, get_all_types_data
+from .rediscache import get_all_types_data, r
 
 client = OpenAI(
     base_url=cfg.get("openai", {}).get("base_url", ""),
@@ -51,7 +54,7 @@ def completion_api(
     if cfg.get("without_redis"):
         return (i for i in ["data: without_redis no cache!\n\n"])
     cache_key = "openai_response:" + hashlib.md5(prompt.encode()).hexdigest()
-    print(f"{cache_key=}")
+    logger.info(f"{cache_key=}")
     # 尝试从 Redis 中获取缓存
     cached_response = r.get(cache_key)
     if cached_response:
@@ -93,7 +96,7 @@ def completion_api(
                 limit_cache()  # 限制缓存条目数量
                 r.set(cache_key, json.dumps(response_data))
             except Exception as e:
-                print(traceback.format_exc())
+                logger.error(traceback.format_exc())
                 yield f"data: {str(e)}\n\n"
 
         return stream()
