@@ -6,16 +6,16 @@ import psutil
 from .logger import APPDATA
 
 pause_file = os.path.join(APPDATA, "report.pause")  # 暂停flag文件路径
-pid_file = os.path.join(APPDATA, 'report.pid')  # 保存进程pid
+pid_file = os.path.join(APPDATA, "report.pid")  # 保存进程pid
 icon_dir = os.path.join(APPDATA, "exe_icon")  # exe icon 路径
 sqlite_file = os.path.join(APPDATA, "app_usage.db")
-aut_pid_file = os.path.join(APPDATA, 'aut.pid')  # 保存进程pid
+aut_pid_file = os.path.join(APPDATA, "aut.pid")  # 保存进程pid
 os.makedirs(icon_dir, exist_ok=True)
 
 
 def read_pid(pf):
     try:
-        with open(pf, 'r') as fi:
+        with open(pf, "r") as fi:
             pid = int(fi.read())
         return pid
     except FileNotFoundError:

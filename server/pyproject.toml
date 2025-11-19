@@ -19,10 +19,14 @@ dependencies = [
 [dependency-groups]
 dev = [
     "fabric>=3.2.2",
+    "pre-commit>=4.4.0",
     "python-dotenv>=1.2.1",
+    "ruff>=0.14.5",
 ]
 
 [tool.uv]
 package = false
 
-
+[tool.ruff]
+line-length = 200
+exclude = [".venv"]

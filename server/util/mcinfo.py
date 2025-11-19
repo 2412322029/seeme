@@ -6,11 +6,7 @@ import socket
 from typing import Optional
 
 from mcstatus import BedrockServer, JavaServer
-from mcstatus.responses import (
-    BedrockStatusResponse,
-    JavaStatusPlayer,
-    JavaStatusResponse,
-)
+from mcstatus.responses import BedrockStatusResponse, JavaStatusPlayer, JavaStatusResponse
 
 
 class Protocol:
@@ -59,7 +55,9 @@ def JavaStatusResponse2json(s: JavaStatusResponse, latency: float):
                 for m in s.forge_data.mods
             ],
             "truncated": s.forge_data.truncated,  # 一个标志位，指示mods列表或channels列表是否不完整（被截断）
-        } if s.forge_data else None,
+        }
+        if s.forge_data
+        else None,
     }
     return json_str
 
@@ -87,9 +85,7 @@ async def try_java(a):
                 server = await JavaServer.async_lookup(a)
                 status_task = server.async_status()
                 ping_task = server.async_ping()
-                status_res, ping_res = await asyncio.gather(
-                    status_task, ping_task, return_exceptions=True
-                )
+                status_res, ping_res = await asyncio.gather(status_task, ping_task, return_exceptions=True)
         if isinstance(status_res, Exception):
             raise status_res
         latency = -1.0 if isinstance(ping_res, Exception) else ping_res
@@ -133,24 +129,14 @@ def mcinfo(address: str, protocol: Optional[Protocol] = None) -> dict:
         proto = Protocol.JAVA
     if proto == Protocol.JAVA:
         res = asyncio.run(try_java(addr))
-        return (
-            res
-            if "error" in res or "_error" not in res
-            else {"error": res.get("_error")}
-        )
+        return res if "error" in res or "_error" not in res else {"error": res.get("_error")}
     if proto == Protocol.BEDROCK:
         res = asyncio.run(try_bedrock(addr))
-        return (
-            res
-            if "error" in res or "_error" not in res
-            else {"error": res.get("_error")}
-        )
+        return res if "error" in res or "_error" not in res else {"error": res.get("_error")}
     if proto == Protocol.AUTO:
 
         async def _gather_both(a):
-            return await asyncio.gather(
-                try_java(a), try_bedrock(a), return_exceptions=True
-            )
+            return await asyncio.gather(try_java(a), try_bedrock(a), return_exceptions=True)
 
         res_java, res_bedrock = asyncio.run(_gather_both(addr))
 

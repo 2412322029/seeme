@@ -4,7 +4,6 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 from flask import Response, jsonify, request
-
 from util.ai import completion_api, del_cache
 from util.config import SECRET_KEY, cfg
 from util.mcinfo import mcinfo
@@ -38,8 +37,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-11-15 12:44:43",
-        "git_hash": "efa255d",
+        "deploy_time": "2025-11-18 20:53:41",
+        "git_hash": "05fd9ca",
     }
     access_count = access_count + 1
     set_data("access_count", str(access_count))
@@ -81,8 +80,7 @@ def proxy_xlog():
         return resp, 200
     try:
         response = requests.get(
-            url="https://xlog.not404.cc/api/pages?characterId=50877&type=post&"
-            "type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest",
+            url="https://xlog.not404.cc/api/pages?characterId=50877&type=post&type=portfolio&visibility=published&useStat=true&limit=18&sortType=latest",
             timeout=10,
         )
     except Exception as e:
@@ -110,21 +108,15 @@ def proxy():
     headers["Host"] = target_domain
     headers["Accept-Encoding"] = "identity"
     if target_domain == "api.bgm.tv":
-        headers.update(
-            {"Authorization": "Bearer " + str(cfg.get("bgm", {}).get("Auth", ""))}
-        )
+        headers.update({"Authorization": "Bearer " + str(cfg.get("bgm", {}).get("Auth", ""))})
     query_params = parse_qs(request.query_string.decode("utf-8"))
     query_params.pop("url", None)
     additional_query_string = urlencode(query_params, doseq=True)
     if additional_query_string:
         target_url = urlunparse(parsed_url._replace(query=additional_query_string))
     try:
-        response = requests.get(
-            url=target_url, headers=headers, stream=True, timeout=10
-        )
-        resp = Response(
-            response.iter_content(chunk_size=1024), status=response.status_code
-        )
+        response = requests.get(url=target_url, headers=headers, stream=True, timeout=10)
+        resp = Response(response.iter_content(chunk_size=1024), status=response.status_code)
         hop_by_hop_headers = [
             "connection",
             "keep-alive",

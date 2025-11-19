@@ -10,13 +10,13 @@ import win32gui
 import win32process
 
 from .logger import logger
-from .process_mgr import sqlite_file, aut_pid_file
+from .process_mgr import aut_pid_file, sqlite_file
 
 conn = sqlite3.connect(sqlite_file)
 cursor = conn.cursor()
 
 # 创建表
-cursor.execute('''
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS app_usage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS app_usage (
     end_time TEXT NOT NULL,
     duration REAL NOT NULL
 )
-''')
+""")
 conn.commit()
 
 # 上一个活动窗口的进程路径
@@ -73,28 +73,44 @@ def update_app_usage_time():
                 # 当前小时段的持续时间
                 hourly_duration = (hourly_end_time - last_start_time).seconds
                 # 检查是否已经存在同一小时内相同应用的记录
-                cursor.execute('''
+                cursor.execute(
+                    """
                 SELECT id, duration FROM app_usage
                 WHERE name = ? AND hourly_start_time = ?
-                ''', (last_active_process_path, hourly_start_time.strftime('%Y-%m-%d %H:%M:%S')))
+                """,
+                    (
+                        last_active_process_path,
+                        hourly_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    ),
+                )
                 result = cursor.fetchone()
                 if result:
                     # 如果存在，更新持续时间
                     existing_id, existing_duration = result
                     new_duration = existing_duration + hourly_duration
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                     UPDATE app_usage
                     SET duration = ?
                     WHERE id = ?
-                    ''', (new_duration, existing_id))
+                    """,
+                        (new_duration, existing_id),
+                    )
                 else:
                     # 如果不存在，插入新记录
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                     INSERT INTO app_usage (name, hourly_start_time, start_time, end_time, duration)
                     VALUES (?, ?, ?, ?, ?)
-                    ''', (last_active_process_path, hourly_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                          last_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                          hourly_end_time.strftime('%Y-%m-%d %H:%M:%S'), hourly_duration))
+                    """,
+                        (
+                            last_active_process_path,
+                            hourly_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            last_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            hourly_end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            hourly_duration,
+                        ),
+                    )
                 conn.commit()
 
                 # 更新时间变量，继续处理下一个小时段
@@ -104,26 +120,42 @@ def update_app_usage_time():
             # 处理最后一个小时段（可能不足1小时）
             if end_time > last_start_time:
                 hourly_duration = (end_time - last_start_time).seconds
-                cursor.execute('''
+                cursor.execute(
+                    """
                 SELECT id, duration FROM app_usage
                 WHERE name = ? AND hourly_start_time = ?
-                ''', (last_active_process_path, hourly_start_time.strftime('%Y-%m-%d %H:%M:%S')))
+                """,
+                    (
+                        last_active_process_path,
+                        hourly_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    ),
+                )
                 result = cursor.fetchone()
                 if result:
                     existing_id, existing_duration = result
                     new_duration = existing_duration + hourly_duration
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                     UPDATE app_usage
                     SET duration = ?
                     WHERE id = ?
-                    ''', (new_duration, existing_id))
+                    """,
+                        (new_duration, existing_id),
+                    )
                 else:
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                     INSERT INTO app_usage (name, hourly_start_time, start_time, end_time, duration)
                     VALUES (?, ?, ?, ?, ?)
-                    ''', (last_active_process_path, hourly_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                          last_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                          end_time.strftime('%Y-%m-%d %H:%M:%S'), hourly_duration))
+                    """,
+                        (
+                            last_active_process_path,
+                            hourly_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            last_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            hourly_duration,
+                        ),
+                    )
                 conn.commit()
 
         # 更新为当前应用
@@ -141,28 +173,41 @@ def save_data():
         # 获取每小时的开始时间
         hourly_start_time = last_start_time.replace(minute=0, second=0, microsecond=0)
         # 检查是否已经存在同一小时内相同应用的记录
-        cursor.execute('''
+        cursor.execute(
+            """
         SELECT id, duration FROM app_usage
         WHERE name = ? AND hourly_start_time = ?
-        ''', (last_active_process_path, hourly_start_time.strftime('%Y-%m-%d %H:%M:%S')))
+        """,
+            (last_active_process_path, hourly_start_time.strftime("%Y-%m-%d %H:%M:%S")),
+        )
         result = cursor.fetchone()
         if result:
             # 如果存在，更新持续时间
             existing_id, existing_duration = result
             new_duration = existing_duration + duration
-            cursor.execute('''
+            cursor.execute(
+                """
             UPDATE app_usage
             SET duration = ?
             WHERE id = ?
-            ''', (new_duration, existing_id))
+            """,
+                (new_duration, existing_id),
+            )
         else:
             # 如果不存在，插入新记录
-            cursor.execute('''
+            cursor.execute(
+                """
             INSERT INTO app_usage (name, hourly_start_time, start_time, end_time, duration)
             VALUES (?, ?, ?, ?, ?)
-            ''', (last_active_process_path, hourly_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                  last_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                  end_time.strftime('%Y-%m-%d %H:%M:%S'), duration))
+            """,
+                (
+                    last_active_process_path,
+                    hourly_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    last_start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    end_time.strftime("%Y-%m-%d %H:%M:%S"),
+                    duration,
+                ),
+            )
         conn.commit()
 
 
@@ -178,13 +223,13 @@ def on_exit(signum, frame):
 def run(upload_callback=None):
     print("开始监听窗口切换...")
     # 保存进程ID到文件
-    with open(aut_pid_file, 'w') as f:
+    with open(aut_pid_file, "w") as f:
         f.write(str(os.getpid()))
     try:
         # 注册信号处理函数
         signal.signal(signal.SIGTERM, on_exit)
         signal.signal(signal.SIGINT, on_exit)
-        last_upload_time = time.time()  # 记录上次上传时间
+        time.time()  # 记录上次上传时间
         while True:
             update_app_usage_time()
             time.sleep(1)

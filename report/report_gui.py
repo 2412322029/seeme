@@ -11,18 +11,16 @@ from datetime import datetime, timedelta
 from tkinter import messagebox
 
 import ttkbootstrap as ttk
-from PIL import ImageTk, Image
+from PIL import Image, ImageTk
 from ttkbootstrap import Window
-from ttkbootstrap.constants import *
+from ttkbootstrap.constants import BOTH, DISABLED, END, LEFT, NORMAL, RIGHT, WORD, W, X, Y
 
 try:
     import Aut
-    from report import (check_process, pid_file, is_process_running, read_pid, kill_process, resume_process,
-                        pause_process,
-                        Exclude_Process, icon_dir, save_exe_icon)
     from Aut import ToolTip
+    from report import Exclude_Process, check_process, icon_dir, is_process_running, kill_process, pause_process, pid_file, read_pid, resume_process, save_exe_icon
 except Exception as e:
-    messagebox.showerror('err', str(e))
+    messagebox.showerror("err", str(e))
     sys.exit(-1)
 
 Press_key = set()
@@ -65,7 +63,7 @@ def open_folder(path, select=False):
     :param select: 是否定位到文件（仅在 Windows 上有效）
     """
     try:
-        if os.name == 'nt':  # Windows
+        if os.name == "nt":  # Windows
             if select:
                 os.system(f'explorer /select,"{path}"')
             else:
@@ -75,11 +73,11 @@ def open_folder(path, select=False):
                     os.startfile(path)
                 else:
                     raise Exception("unknown path")
-        elif os.name == 'posix':  # macOS 或 Linux
-            if sys.platform == 'darwin':  # macOS
-                subprocess.run(['open', path], check=True)
+        elif os.name == "posix":  # macOS 或 Linux
+            if sys.platform == "darwin":  # macOS
+                subprocess.run(["open", path], check=True)
             else:  # Linux
-                subprocess.run(['xdg-open', path], check=True)
+                subprocess.run(["xdg-open", path], check=True)
         else:
             messagebox.showerror("错误", f"不支持的操作系统, {path=}")
     except Exception as e:
@@ -88,12 +86,30 @@ def open_folder(path, select=False):
 
 def save_icon():
     for o in Aut.get_all_names():
-        save_exe_icon(o, o.split('\\')[-1], a=48)
+        save_exe_icon(o, o.split("\\")[-1], a=48)
 
 
 class mainWindows(ttk.Frame):
-    theme_list = ['cosmo', 'flatly', 'litera', 'minty', 'lumen', 'sandstone', 'yeti', 'pulse', 'united', 'morph',
-                  'journal', 'darkly', 'superhero', 'solar', 'cyborg', 'vapor', 'simplex', 'cerculean', ]
+    theme_list = [
+        "cosmo",
+        "flatly",
+        "litera",
+        "minty",
+        "lumen",
+        "sandstone",
+        "yeti",
+        "pulse",
+        "united",
+        "morph",
+        "journal",
+        "darkly",
+        "superhero",
+        "solar",
+        "cyborg",
+        "vapor",
+        "simplex",
+        "cerculean",
+    ]
 
     def __init__(self, master: Window):
         self.app_frames = []
@@ -180,19 +196,30 @@ class mainWindows(ttk.Frame):
         self.pause_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
         self.resume_button = ttk.Button(btn_frame, text="恢复", command=resume_process, width=8)
         self.resume_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.startup1_var = tk.IntVar(value=Aut.check_startup_exists('seeme-report'))
+        self.startup1_var = tk.IntVar(value=Aut.check_startup_exists("seeme-report"))
 
         def on_toggle1():
             if self.startup1_var.get():
-                Aut.set_startup('seeme-report', f'{path} run -c {str(self.cycle_time)} --without_check')
+                Aut.set_startup(
+                    "seeme-report",
+                    f"{path} run -c {str(self.cycle_time)} --without_check",
+                )
             else:
-                Aut.delete_startup('seeme-report')
+                Aut.delete_startup("seeme-report")
 
-        self.startup1 = ttk.Checkbutton(btn_frame, text="开机启动", variable=self.startup1_var,
-                                        command=on_toggle1, width=10)
+        self.startup1 = ttk.Checkbutton(
+            btn_frame,
+            text="开机启动",
+            variable=self.startup1_var,
+            command=on_toggle1,
+            width=10,
+        )
         self.startup1.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        ToolTip(self.startup1, 'no',
-                at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report')}"))
+        ToolTip(
+            self.startup1,
+            "no",
+            at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report')}"),
+        )
         self.tree = ttk.Treeview(lf, columns=("k", "v"), show="", height=6)
         self.tree.pack(fill="both", expand=True)
         self.tree.column("k", stretch=False)
@@ -208,19 +235,27 @@ class mainWindows(ttk.Frame):
         self.stop2_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
         # self.analysis_button = ttk.Button(btn2_frame, text="打印分析", command=Aut.print_analysis, width=8)
         # self.analysis_button.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        self.startup2_var = tk.IntVar(value=Aut.check_startup_exists('seeme-report-aut'))
+        self.startup2_var = tk.IntVar(value=Aut.check_startup_exists("seeme-report-aut"))
 
         def on_toggle2():
             if self.startup2_var.get():
-                Aut.set_startup('seeme-report-aut', f'{path} aut --without_check')
+                Aut.set_startup("seeme-report-aut", f"{path} aut --without_check")
             else:
-                Aut.delete_startup('seeme-report-aut')
+                Aut.delete_startup("seeme-report-aut")
 
-        self.startup2 = ttk.Checkbutton(btn2_frame, text="开机启动", variable=self.startup2_var,
-                                        command=on_toggle2, width=10)
+        self.startup2 = ttk.Checkbutton(
+            btn2_frame,
+            text="开机启动",
+            variable=self.startup2_var,
+            command=on_toggle2,
+            width=10,
+        )
         self.startup2.pack(side=LEFT, anchor=W, padx=20, pady=2)
-        ToolTip(self.startup2, "no",
-                at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report-aut')}"))
+        ToolTip(
+            self.startup2,
+            "no",
+            at_show_func=lambda label: label.config(text=f"启动项为: {Aut.get_startup('seeme-report-aut')}"),
+        )
         self.tree2 = ttk.Treeview(lf2, columns=("k", "v"), show="", height=5)
         self.tree2.pack(fill="both", expand=True)
         self.tree2.column("k", stretch=False)
@@ -231,7 +266,7 @@ class mainWindows(ttk.Frame):
         self.cmd_frame.pack(fill=BOTH, padx=10, pady=5)
         self.cmd_entry = ttk.Entry(self.cmd_frame, width=50)
         self.cmd_entry.pack(side=LEFT, padx=10, pady=5, anchor=W)
-        self.cmd_entry.insert(0, '--help')
+        self.cmd_entry.insert(0, "--help")
         self.runcmd_button = ttk.Button(self.cmd_frame, text="运行", command=self.run_cmd, width=8)
         self.runcmd_button.pack(side=LEFT, anchor=W, padx=10, pady=5)
         self.clear_button = ttk.Button(self.cmd_frame, text="清空输出", command=self.clear_output_viewer, width=8)
@@ -257,9 +292,15 @@ class mainWindows(ttk.Frame):
         else:
             _args = ["python", "report.py", "run", "-c", str(self.cycle_time)]
         try:
-            self.process = subprocess.Popen(_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                            text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
-                                            bufsize=1, encoding="utf-8")
+            self.process = subprocess.Popen(
+                _args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
+                bufsize=1,
+                encoding="utf-8",
+            )
             # 启动线程来读取子进程的输出
             print(f"running pid={self.process.pid}")
         except Exception as e:
@@ -274,26 +315,39 @@ class mainWindows(ttk.Frame):
         else:
             _args = ["python", "report.py", "aut"]
         try:
-            self.process2 = subprocess.Popen(_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                             creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
-                                             bufsize=1, encoding="utf-8")
+            self.process2 = subprocess.Popen(
+                _args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
+                bufsize=1,
+                encoding="utf-8",
+            )
             print(f"running pid={self.process2.pid}")
         except Exception as e:
             messagebox.showerror("错误", f"启动失败: {e}")
 
     def run_cmd(self):
         command_string = self.cmd_entry.get().strip()
-        if command_string == '': return
-        if command_string.startswith('run') or command_string.startswith('aut'):
-            print('不能在这里运行阻塞程序')
+        if command_string == "":
+            return
+        if command_string.startswith("run") or command_string.startswith("aut"):
+            print("不能在这里运行阻塞程序")
             return
         cli = os.path.join(os.path.dirname(__file__), "report_cli.exe ")
         if not os.path.exists(cli):
-            print('需要 report_cli.exe')
+            print("需要 report_cli.exe")
             return
-        self.process3 = subprocess.Popen(cli + " " + command_string, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                         text=True, creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
-                                         bufsize=1, encoding="utf-8")
+        self.process3 = subprocess.Popen(
+            cli + " " + command_string,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,  # 隐藏控制台窗口
+            bufsize=1,
+            encoding="utf-8",
+        )
         Aut.executor.submit(self.read_output, self.process3)
         self.cmd_entry.delete(0, END)
 
@@ -318,7 +372,7 @@ class mainWindows(ttk.Frame):
         if err:
             tr.insert("", "end", values=("Error", f"{err}"))
             tr.insert("", "end", values=("Stop", "stop update process info"))
-            raise Exception(f'更新进程状态信息出错 {err}')
+            raise Exception(f"更新进程状态信息出错 {err}")
         tr.tag_configure("running", foreground="green")
         tr.tag_configure("stop", foreground="red")
         tr.tag_configure("paused", foreground="yellow")
@@ -354,7 +408,12 @@ class mainWindows(ttk.Frame):
             log_files = ["No logs found"]
         self.log_file_var = ttk.StringVar(value=log_files[0])
         self.log_file_var.trace("w", self.on_log_file_changed)  # 绑定事件
-        log_combo = ttk.Combobox(log_selector_frame, textvariable=self.log_file_var, values=log_files, state="readonly")
+        log_combo = ttk.Combobox(
+            log_selector_frame,
+            textvariable=self.log_file_var,
+            values=log_files,
+            state="readonly",
+        )
         log_combo.pack(side=LEFT, padx=10)
         refresh_btn = ttk.Button(log_selector_frame, text="Refresh Logs", command=self.update_logs)
         refresh_btn.pack(side=LEFT, padx=10)
@@ -380,7 +439,7 @@ class mainWindows(ttk.Frame):
         if not os.path.exists(log_path):
             return
         try:
-            with open(log_path, 'r', encoding='utf-8') as file:
+            with open(log_path, "r", encoding="utf-8") as file:
                 logs = file.readlines()
         except Exception as e:
             logs = [f"Error reading log file: {e}"]
@@ -406,7 +465,12 @@ class mainWindows(ttk.Frame):
         ttk.Label(row, text="主题:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.theme_var = ttk.StringVar(value="")
         self.theme_var.trace("w", self.on_theme_changed)  # 绑定事件
-        theme_combo = ttk.Combobox(row, textvariable=self.theme_var, values=mainWindows.theme_list, state="readonly")
+        theme_combo = ttk.Combobox(
+            row,
+            textvariable=self.theme_var,
+            values=mainWindows.theme_list,
+            state="readonly",
+        )
         theme_combo.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         # 服务器地址
         ttk.Label(row, text="服务器地址:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
@@ -429,8 +493,12 @@ class mainWindows(ttk.Frame):
         self.add_entry.grid(row=6, column=0, padx=5, pady=5, sticky="ew")
         self.add_button = ttk.Button(row, text="添加", command=self.add_exclude_process)
         self.add_button.grid(row=6, column=1, padx=5, pady=5, sticky="w")
-        self.remove_button = ttk.Button(row, text="删除选中", command=self.remove_exclude_process,
-                                        bootstyle="danger-outline")
+        self.remove_button = ttk.Button(
+            row,
+            text="删除选中",
+            command=self.remove_exclude_process,
+            bootstyle="danger-outline",
+        )
         self.remove_button.grid(row=6, column=1, padx=5, pady=5, sticky="e")
 
         def getsize(f):
@@ -447,31 +515,54 @@ class mainWindows(ttk.Frame):
             open_folder(path=Aut.sqlite_file, select=True)
 
         ttk.Label(row, text="数据库文件：").grid(row=7, column=0, padx=5, pady=5, sticky="w")
-        label3 = ttk.Label(row, text=f"{Aut.sqlite_file.split("\\")[-1]} {getsize(Aut.sqlite_file)}",
-                           foreground="#2AADFF", cursor="hand2")
+        label3 = ttk.Label(
+            row,
+            text=f"{Aut.sqlite_file.split('\\')[-1]} {getsize(Aut.sqlite_file)}",
+            foreground="#2AADFF",
+            cursor="hand2",
+        )
         label3.grid(row=7, column=1, columnspan=2, padx=5, pady=5, sticky="we")
         label3.bind("<Button-1>", open_folder_and_select_file)
 
         ttk.Label(row, text="更新源:").grid(row=8, column=0, padx=5, pady=5, sticky="w")
         self.update_source_var = ttk.StringVar(value="gitee")
         self.update_source_var.trace("w", self.on_update_source_changed)
-        update_sourceComb = ttk.Combobox(row, textvariable=self.update_source_var,
-                                         values=["gitee", "github"], state="readonly")
+        update_sourceComb = ttk.Combobox(
+            row,
+            textvariable=self.update_source_var,
+            values=["gitee", "github"],
+            state="readonly",
+        )
         update_sourceComb.grid(row=8, column=1, padx=5, pady=5, sticky="ew")
         ttk.Label(row, text="自动检查更新频率:").grid(row=9, column=0, padx=5, pady=5, sticky="w")
         self.check_frequency_var = ttk.StringVar(value="每天")
         self.check_frequency_var.trace("w", self.on_check_frequency_changed)
-        (ttk.Combobox(row, textvariable=self.check_frequency_var, values=["每次启动", "每天", "每周", "从不"], state="readonly")
-         .grid(row=9, column=1, padx=5, pady=5, sticky="ew"))
+        (
+            ttk.Combobox(
+                row,
+                textvariable=self.check_frequency_var,
+                values=["每次启动", "每天", "每周", "从不"],
+                state="readonly",
+            ).grid(row=9, column=1, padx=5, pady=5, sticky="ew")
+        )
 
-        button1 = ttk.Button(row, text="打开程序文件夹", command=lambda: open_folder(path=os.path.dirname(__file__)))
+        button1 = ttk.Button(
+            row,
+            text="打开程序文件夹",
+            command=lambda: open_folder(path=os.path.dirname(__file__)),
+        )
         button1.grid(row=10, column=0, pady=15, padx=5, sticky="w")
         button2 = ttk.Button(row, text="打开数据文件夹", command=lambda: open_folder(path=Aut.APPDATA))
         button2.grid(row=10, column=0, pady=15, padx=5, sticky="e")
         button3 = ttk.Button(row, text="测试更新服务连接", command=Aut.test_conn)
         button3.grid(row=10, column=1, pady=15, padx=5, sticky="w")
 
-        reload_button = ttk.Button(row, text="重载配置", command=self.load_settings, bootstyle="warning-outline")
+        reload_button = ttk.Button(
+            row,
+            text="重载配置",
+            command=self.load_settings,
+            bootstyle="warning-outline",
+        )
         reload_button.grid(row=11, column=0, pady=15, padx=5, sticky="w")
         # 保存按钮
         save_button = ttk.Button(row, text="保存", command=self.save_settings, bootstyle="success-outline")
@@ -596,10 +687,10 @@ class mainWindows(ttk.Frame):
         elif check_frequency == "每次启动":
             t_delta = timedelta(days=1)
         else:
-            #self.check_frequency_var.set("每周")
+            # self.check_frequency_var.set("每周")
             t_delta = timedelta(weeks=1)
             print("更新频率设置错误")
-        if now - last_update_time_o >= t_delta or check_frequency=='每次启动':
+        if now - last_update_time_o >= t_delta or check_frequency == "每次启动":
             print(f"获取更新  上次更新时间:{last_update_time}")
             Aut.get_update_info(self.update_source_var.get(), self, alert=False)
 
@@ -620,7 +711,10 @@ class mainWindows(ttk.Frame):
         scrollbar = ttk.Scrollbar(row, orient="vertical", command=self.canvas.yview)
         self.scrollable_frame = ttk.Frame(self.canvas)
         self.canvas.configure(yscrollcommand=scrollbar.set)
-        self.canvas.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
+        )
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
@@ -649,7 +743,7 @@ class mainWindows(ttk.Frame):
                 max_duration = max(row["total_duration"] for row in usage_data) if usage_data else 1
                 for app in usage_data:
                     self.create_app_frame(app, max_duration)
-                self.canvas_at.config(text=f"更新于 {datetime.now().strftime("%H:%M:%S")}")
+                self.canvas_at.config(text=f"更新于 {datetime.now().strftime('%H:%M:%S')}")
             except Exception as e:
                 print(e)
                 self.canvas_at.config(text=f"Error:{str(e)}")
@@ -657,7 +751,7 @@ class mainWindows(ttk.Frame):
         f.add_done_callback(get_show)
 
     def create_app_frame(self, app, max_duration=1):
-        app_name = app["name"].split('\\')[-1]
+        app_name = app["name"].split("\\")[-1]
         total_duration = app["total_duration"]
         app_frame = ttk.Frame(self.scrollable_frame)
         app_frame.pack(fill="x", padx=5, pady=5)
@@ -667,38 +761,42 @@ class mainWindows(ttk.Frame):
             icon_image = Image.open(icon_path)
             icon_image = icon_image.resize((32, 32), Image.Resampling.LANCZOS)
             icon_photo = ImageTk.PhotoImage(icon_image)
-            icon_label = ttk.Label(app_frame, image=icon_photo, cursor='hand2')
+            icon_label = ttk.Label(app_frame, image=icon_photo, cursor="hand2")
             icon_label.image = icon_photo
         else:
-            icon_label = ttk.Label(app_frame, text="", width=3, cursor='hand2')
+            icon_label = ttk.Label(app_frame, text="", width=3, cursor="hand2")
 
         def delete_app(event):
             confirm = messagebox.askyesno("确认删除", f"确定要删除应用 '{app_name}' 的所有记录吗？")
             if confirm:
                 Aut.delete_app_by_name(app["name"])
-                messagebox.showinfo('info', f"已删除所有名为 '{app_name}' 的应用记录。")
+                messagebox.showinfo("info", f"已删除所有名为 '{app_name}' 的应用记录。")
                 # self.load_usage_data()
             else:
-                messagebox.showinfo('info', f"取消删除应用 '{app_name}' 的记录。")
+                messagebox.showinfo("info", f"取消删除应用 '{app_name}' 的记录。")
 
-        icon_label.bind('<Button-3>', lambda event: delete_app(event))
-        icon_label.bind('<Button-1>', lambda event: open_folder(icon_path, select=True))
+        icon_label.bind("<Button-3>", lambda event: delete_app(event))
+        icon_label.bind("<Button-1>", lambda event: open_folder(icon_path, select=True))
         icon_label.pack(side="left", padx=5)
-        ToolTip(icon_label, f'{app_name}\n左键点击打开icon所在位置\n右键点击删除该应用的记录', delay=100)
+        ToolTip(
+            icon_label,
+            f"{app_name}\n左键点击打开icon所在位置\n右键点击删除该应用的记录",
+            delay=100,
+        )
         name_label = ttk.Label(app_frame, text=app_name, width=30, anchor="w", cursor="hand2")
         name_label.pack(side="left", padx=5)
         name_label.bind("<Button-1>", lambda event: open_folder(app["name"], select=True))
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))  # 更新滚动区域。
-        show_text = f"打开目录: \n{os.path.dirname(app["name"])}"
+        show_text = f"打开目录: \n{os.path.dirname(app['name'])}"
         after_id = ""
 
         def at_show(lab):
-            f: Future = Aut.get_hourly_duration_for_name(app['name'])
+            f: Future = Aut.get_hourly_duration_for_name(app["name"])
             data = None
 
             def get_show(future):
                 nonlocal after_id, data
-                if 'Control_L' in Press_key:
+                if "Control_L" in Press_key:
                     try:
                         if not data:
                             print(f"query {os.path.basename(app['name'])} hourly duration")
@@ -752,8 +850,7 @@ class mainWindows(ttk.Frame):
         else:
             self.download_text.config(text="")
         if not self.download_progress:
-            self.download_progress = ttk.Progressbar(self.about_row,
-                                                     orient="horizontal", length=400, mode="determinate")
+            self.download_progress = ttk.Progressbar(self.about_row, orient="horizontal", length=400, mode="determinate")
             self.download_progress.grid(row=4, column=0, columnspan=2, padx=5, pady=5)
 
         # step 3
@@ -777,8 +874,12 @@ class mainWindows(ttk.Frame):
         self.about_row.pack(fill="both", expand=True)
         self.notebook.add(self.about_row, text="关于", state="normal")
         ttk.Label(self.about_row, text="Home page:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
-        label2 = ttk.Label(self.about_row, text="https://github.com/2412322029/seeme", foreground="#2AADFF",
-                           cursor="hand2")
+        label2 = ttk.Label(
+            self.about_row,
+            text="https://github.com/2412322029/seeme",
+            foreground="#2AADFF",
+            cursor="hand2",
+        )
         label2.grid(row=0, column=1, padx=5, pady=5, sticky="w")
         label2.bind("<Button-1>", open_url)
         ttk.Label(self.about_row, text="version:").grid(row=1, column=0, padx=5, pady=5, sticky="e")
@@ -808,6 +909,7 @@ def main():
         app.geometry("950x1000")
         app.iconbitmap(os.path.join(os.path.dirname(__file__), "icon.ico"))
         mainWindows(app)
+
         def on_key_press(event):
             Press_key.add(event.keysym)
 
@@ -821,11 +923,11 @@ def main():
         messagebox.showerror("Error", str(e))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv[1:]) == 0:
         main()
     else:
-        from report import main, args_parser
+        from report import args_parser, main
 
         args = args_parser()[0]
         main(args)

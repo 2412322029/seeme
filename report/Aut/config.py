@@ -37,8 +37,11 @@ def read_config():
     else:  # 初始化
         config.set("DEFAULT", "key", "")
         config.set("DEFAULT", "url", "")
-        config.set("DEFAULT", "exclude_process",
-                   'TextInputHost.exe,SystemSettings.exe,NVIDIA Overlay.exe,svchost.exe,ApplicationFrameHost.exe')
+        config.set(
+            "DEFAULT",
+            "exclude_process",
+            "TextInputHost.exe,SystemSettings.exe,NVIDIA Overlay.exe,svchost.exe,ApplicationFrameHost.exe",
+        )
         with open(CONFIG_FILE, "w") as configfile:
             config.write(configfile)
         return config

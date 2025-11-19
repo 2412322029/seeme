@@ -6,17 +6,27 @@ from dotenv import load_dotenv
 # 加载.env文件
 load_dotenv()
 
-def create_release(api_url, platform, owner, repo, access_token, tag_name, release_name, release_description):
+
+def create_release(
+    api_url,
+    platform,
+    owner,
+    repo,
+    access_token,
+    tag_name,
+    release_name,
+    release_description,
+):
     url = f"{api_url}/repos/{owner}/{repo}/releases"
     headers = {
         "Authorization": f"token {access_token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
     data = {
         "tag_name": tag_name,
         "name": release_name,
         "body": release_description,
-        "target_commitish": "master"
+        "target_commitish": "master",
     }
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 201:
@@ -43,12 +53,10 @@ def upload_asset(api_url, platform, owner, repo, access_token, release_id, file_
             "Authorization": f"token {access_token}",
         }
         file_name = os.path.basename(file_path)
-        params = {
-            "name": file_name
-        }
+        params = {"name": file_name}
 
         with open(file_path, "rb") as file:
-            files = {'file': (file_name, file)}
+            files = {"file": (file_name, file)}
             response = requests.post(url, headers=headers, params=params, files=files)
             if response.status_code == 201:
                 print(f"Asset '{file_name}' uploaded successfully on {platform}.")
@@ -64,11 +72,9 @@ def upload_asset(api_url, platform, owner, repo, access_token, release_id, file_
             file_name = os.path.basename(file_path)
             headers = {
                 "Authorization": f"token {access_token}",
-                "Content-Type": "application/octet-stream"
+                "Content-Type": "application/octet-stream",
             }
-            params = {
-                "name": file_name
-            }
+            params = {"name": file_name}
             with open(file_path, "rb") as file:
                 response = requests.post(upload_url, headers=headers, params=params, data=file)
                 if response.status_code == 201:
@@ -84,7 +90,14 @@ def upload_asset(api_url, platform, owner, repo, access_token, release_id, file_
         exit(0)
 
 
-def main(platform, access_token, tag_name, release_name, release_description, files: list[str]):
+def main(
+    platform,
+    access_token,
+    tag_name,
+    release_name,
+    release_description,
+    files: list[str],
+):
     repo = "seeme"
     if platform.lower() == "github":
         api_url = "https://api.github.com"
@@ -96,7 +109,16 @@ def main(platform, access_token, tag_name, release_name, release_description, fi
         raise ValueError("Unsupported platform. Use 'github' or 'gitee'.")
 
     print(f"Creating release on {platform}...")
-    release = create_release(api_url, platform, owner, repo, access_token, tag_name, release_name, release_description)
+    release = create_release(
+        api_url,
+        platform,
+        owner,
+        repo,
+        access_token,
+        tag_name,
+        release_name,
+        release_description,
+    )
 
     if release:
         release_id = release["id"]
@@ -128,8 +150,8 @@ if __name__ == "__main__":
     TAG_NAME = f"v{__version__}"
     RELEASE_NAME = f"v{__version__}"
     files = [
-        os.path.join(CONFIG["output_dir"], f'{CONFIG["gui_dir"]}.{__version__}.zip'),
-        os.path.join(CONFIG["output_dir"], f'{CONFIG["gui_dir"]}.{__version__}.zip.sha256.txt')
+        os.path.join(CONFIG["output_dir"], f"{CONFIG['gui_dir']}.{__version__}.zip"),
+        os.path.join(CONFIG["output_dir"], f"{CONFIG['gui_dir']}.{__version__}.zip.sha256.txt"),
     ]
 
     # 检查文件是否存在

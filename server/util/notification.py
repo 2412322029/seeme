@@ -1,7 +1,6 @@
 import requests
-
-from util.logger import logger
 from util.config import cfg
+from util.logger import logger
 
 
 def notify(title, content):

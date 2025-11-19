@@ -12,10 +12,12 @@ EXCLUDE_DIRS = {
     "venv",
     ".venv",
     "exe_icon",
+    "log",
     "logs",
     ".ruff_cache",
 }
 EXCLUDE_FILES = {
+    ".pre-commit-config.yaml",
     ".env",
     "config-example.toml",
     "data.json",
@@ -38,9 +40,7 @@ PYPATH = os.getenv("PYPATH")  # 远程服务器Python路径
 def get_sum_by_ssh():
     # 验证必要配置
     if not REMOTE_HOST or not REMOTE_USER or not REMOTE_DIR or not PYPATH:
-        print(
-            "SSH 配置不完整：请确保 REMOTE_HOST、REMOTE_USER、REMOTE_DIR 和 PYPATH 已设置。"
-        )
+        print("SSH 配置不完整：请确保 REMOTE_HOST、REMOTE_USER、REMOTE_DIR 和 PYPATH 已设置。")
         return None
     try:
         with Connection(host=REMOTE_HOST, user=REMOTE_USER, port=REMOTE_PORT) as conn:
@@ -69,9 +69,7 @@ def get_sum_by_ssh():
                 return cat_result.stdout
             else:
                 stderr_or_out = cat_result.stderr or cat_result.stdout
-                print(
-                    f"读取远程 sum.txt 返回非零状态：{cat_result.exited}\n{stderr_or_out}"
-                )
+                print(f"读取远程 sum.txt 返回非零状态：{cat_result.exited}\n{stderr_or_out}")
                 return None
     except Exception as e:
         print(f"建立 SSH 连接时发生错误：{e}")
@@ -149,9 +147,7 @@ def compare_sum_txt():
     remote_dict = parse_lines(remote_text.splitlines())
     only_local = sorted([p for p in local_dict if p not in remote_dict])
     only_remote = sorted([p for p in remote_dict if p not in local_dict])
-    different = sorted(
-        [p for p in local_dict if p in remote_dict and local_dict[p] != remote_dict[p]]
-    )
+    different = sorted([p for p in local_dict if p in remote_dict and local_dict[p] != remote_dict[p]])
 
     if not (only_local or only_remote or different):
         print("本地和远程的 sum.txt 文件一致。")

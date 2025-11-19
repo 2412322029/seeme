@@ -1,7 +1,9 @@
 import re
-from flask import request, jsonify
-from . import api_bp
+
+from flask import jsonify, request
 from util.rediscache import r
+
+from . import api_bp
 
 
 @api_bp.route("/c/<mmd>", methods=["GET"])

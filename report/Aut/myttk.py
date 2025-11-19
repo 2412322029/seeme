@@ -43,7 +43,13 @@ class ToolTip:
         self.tipwindow = tw = tk.Toplevel(self.widget)
         tw.wm_overrideredirect(True)
         tw.wm_geometry(f"+{self.x}+{self.y}")
-        self.label = tk.Label(self.tipwindow, text=self.text, justify=tk.LEFT, relief='groove', borderwidth=2)
+        self.label = tk.Label(
+            self.tipwindow,
+            text=self.text,
+            justify=tk.LEFT,
+            relief="groove",
+            borderwidth=2,
+        )
         self.label.pack(ipadx=4)
         if self.at_show_func:
             self.at_show_func(self.label)
@@ -66,12 +72,16 @@ class BarChart(tk.Canvas):
         :param kwargs: 其他 Canvas 参数
         """
         super().__init__(master, width=width, height=height, **kwargs)
-        self.data = data if data else [
-            ("A", 10, "red", "<Button-1>", self.on_click, "这是A柱子"),
-            ("B", 20, "green", "<Button-1>", self.on_click, "这是B柱子"),
-            ("C", 15, "blue", "<Button-1>", self.on_click, "这是C柱子"),
-            ("D", 30, "purple", "<Button-1>", self.on_click, "这是D柱子")
-        ]
+        self.data = (
+            data
+            if data
+            else [
+                ("A", 10, "red", "<Button-1>", self.on_click, "这是A柱子"),
+                ("B", 20, "green", "<Button-1>", self.on_click, "这是B柱子"),
+                ("C", 15, "blue", "<Button-1>", self.on_click, "这是C柱子"),
+                ("D", 30, "purple", "<Button-1>", self.on_click, "这是D柱子"),
+            ]
+        )
         self.width = width
         self.height = height
         self.draw_chart()
@@ -90,19 +100,22 @@ class BarChart(tk.Canvas):
             y1 = self.height
 
             # 绘制柱子
-            bar_id = self.create_rectangle(x0, y0, x1, y1, fill=color, outline='black', tags=f"bar_{i}")
+            bar_id = self.create_rectangle(x0, y0, x1, y1, fill=color, outline="black", tags=f"bar_{i}")
             # 绑定事件
             self.tag_bind(bar_id, event_type, lambda event, idx=i, cb=callback: cb(event, idx))
             # 添加 Tooltip
-            self.tag_bind(bar_id, "<Enter>",
-                          lambda event, idx=i, text=tooltip_text: self.show_tooltip(event, idx, text))
+            self.tag_bind(
+                bar_id,
+                "<Enter>",
+                lambda event, idx=i, text=tooltip_text: self.show_tooltip(event, idx, text),
+            )
             self.tag_bind(bar_id, "<Leave>", lambda event, idx=i: self.hide_tooltip(event, idx))
 
             # 绘制标签
-            self.create_text(x0 + bar_width / 2, self.height + 10, text=label, anchor='n')
+            self.create_text(x0 + bar_width / 2, self.height + 10, text=label, anchor="n")
 
             # 绘制数值标签
-            self.create_text(x0 + bar_width / 2, y0 - 10, text=str(value), anchor='s')
+            self.create_text(x0 + bar_width / 2, y0 - 10, text=str(value), anchor="s")
 
         self.tooltips = {}
 
@@ -119,17 +132,45 @@ class BarChart(tk.Canvas):
         print(f"柱子 {index} 被点击了！")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 创建主窗口
     root = tk.Tk()
     root.title("柱状图示例")
 
     # 创建柱状图组件
     data = [
-        ("苹果", 30, "red", "<Button-1>", lambda event, idx: print(f"苹果柱子 {idx} 被点击"), "这是苹果柱子"),
-        ("香蕉", 20, "yellow", "<Button-1>", lambda event, idx: print(f"香蕉柱子 {idx} 被点击"), "这是香蕉柱子"),
-        ("橙子", 40, "orange", "<Button-1>", lambda event, idx: print(f"橙子柱子 {idx} 被点击"), "这是橙子柱子"),
-        ("葡萄", 10, "purple", "<Button-1>", lambda event, idx: print(f"葡萄柱子 {idx} 被点击"), "这是葡萄柱子")
+        (
+            "苹果",
+            30,
+            "red",
+            "<Button-1>",
+            lambda event, idx: print(f"苹果柱子 {idx} 被点击"),
+            "这是苹果柱子",
+        ),
+        (
+            "香蕉",
+            20,
+            "yellow",
+            "<Button-1>",
+            lambda event, idx: print(f"香蕉柱子 {idx} 被点击"),
+            "这是香蕉柱子",
+        ),
+        (
+            "橙子",
+            40,
+            "orange",
+            "<Button-1>",
+            lambda event, idx: print(f"橙子柱子 {idx} 被点击"),
+            "这是橙子柱子",
+        ),
+        (
+            "葡萄",
+            10,
+            "purple",
+            "<Button-1>",
+            lambda event, idx: print(f"葡萄柱子 {idx} 被点击"),
+            "这是葡萄柱子",
+        ),
     ]
     chart = BarChart(root, data=data, width=50, height=300)
     chart.pack(padx=20, pady=20)

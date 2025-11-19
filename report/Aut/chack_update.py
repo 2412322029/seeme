@@ -11,10 +11,10 @@ from tkinter import messagebox
 import requests
 
 from .config import cfg, setting_config
-from .logger import logger, APPDATA, __version__
-from .process_mgr import kill_process, pid_file, aut_pid_file, read_pid, is_process_running
+from .logger import APPDATA, __version__, logger
+from .process_mgr import aut_pid_file, is_process_running, kill_process, pid_file, read_pid
 
-temp_dir = os.path.join(APPDATA, 'temp')
+temp_dir = os.path.join(APPDATA, "temp")
 
 # 创建一个线程池
 executor = ThreadPoolExecutor(max_workers=10, thread_name_prefix="ThreadPool")
@@ -44,7 +44,10 @@ def test_conn():
         start_time = time.time()
         requests.get("https://gitee.com/api/v5/repos/qwe2412322029")
         gitee_time = time.time() - start_time
-        messagebox.showinfo("测试连接", f"gitee {gitee_time * 1000:.0f}ms\ngithub {github_time * 1000:.0f}ms")
+        messagebox.showinfo(
+            "测试连接",
+            f"gitee {gitee_time * 1000:.0f}ms\ngithub {github_time * 1000:.0f}ms",
+        )
     except Exception as e:
         messagebox.showerror("测试连接", f"无法连接到任何服务 {e}")
 
@@ -80,25 +83,38 @@ def get_update_info(update_source, s, alert=True):
                 "version": tag_name,
                 "published_at": published_at,
                 "body": body,
-                "assets": my_assets
+                "assets": my_assets,
             }
-            cfg.set("DEFAULT", "last_update_time", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            cfg.set(
+                "DEFAULT",
+                "last_update_time",
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            )
             setting_config(cfg)
             if not s:
                 return info
             else:
                 s.update_info = info
                 if __version__ >= info["version"] and alert:
-                    messagebox.showinfo("info", f"{__version__}是最新版。{__version__} ->"
-                                                 f" {info["version"]}\n{info["body"]}")
+                    messagebox.showinfo(
+                        "info",
+                        f"{__version__}是最新版。{__version__} -> {info['version']}\n{info['body']}",
+                    )
                 if __version__ < info["version"]:
-                    messagebox.askquestion("有新版本!", f"{__version__} ->"
-                                                         f" {info["version"]}\n{info["body"]}")
-                    s.info_label.config(text=f"{info["version"]} is new ,"
-                                             f" Click to download", state="normal", cursor="hand2")
+                    messagebox.askquestion(
+                        "有新版本!",
+                        f"{__version__} -> {info['version']}\n{info['body']}",
+                    )
+                    s.info_label.config(
+                        text=f"{info['version']} is new , Click to download",
+                        state="normal",
+                        cursor="hand2",
+                    )
         else:
-            messagebox.showerror("错误", f"检查更新失败，\n"
-                                         f"{url=}\n状态码: {response.status_code}\n{response.text}")
+            messagebox.showerror(
+                "错误",
+                f"检查更新失败，\n{url=}\n状态码: {response.status_code}\n{response.text}",
+            )
     except Exception as e:
         messagebox.showerror("错误", f"检查更新失败: {e}")
 
@@ -122,8 +138,8 @@ def download_file(name, url, save_dir, s=None, do_next=None):
         logger.info(f"download {url}")
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        total_size = int(response.headers.get('content-length', 0))
-        with open(temp_path, 'wb') as file:
+        total_size = int(response.headers.get("content-length", 0))
+        with open(temp_path, "wb") as file:
             current_size = 0
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
@@ -133,8 +149,7 @@ def download_file(name, url, save_dir, s=None, do_next=None):
                         s.download_progress["value"] = (current_size / total_size) * 100
                         s.about_row.update_idletasks()
                         bf = f"{(current_size / total_size) * 100:.1f}%"
-                        s.download_text.config(
-                            text=f"下载{name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
+                        s.download_text.config(text=f"下载{name} {b2mb(current_size)}MB / {b2mb(total_size)}MB {bf}")
         os.rename(temp_path, save_path)
         # print(f"开始模拟下载：{url}")
         # total_size = 1024 * 1024 * 10
@@ -167,7 +182,7 @@ def download_file(name, url, save_dir, s=None, do_next=None):
 def check_file_integrity(zip_file: str, sum_file, s=None, do_next=None):
     msg = ""
     try:
-        with open(sum_file, 'r') as f:
+        with open(sum_file, "r") as f:
             expected_hash = f.read().strip()
     except FileNotFoundError:
         msg = f"错误：文件 {sum_file} 未找到"
@@ -182,7 +197,7 @@ def check_file_integrity(zip_file: str, sum_file, s=None, do_next=None):
         hash_function = hashlib.sha256()
         current_size = 0
         total_size = os.path.getsize(zip_file)
-        with open(zip_file, 'rb') as f:
+        with open(zip_file, "rb") as f:
             while chunk := f.read(8192):
                 current_size += len(chunk)
                 if s:
@@ -215,7 +230,7 @@ def unzip_file(zip_file: str, s):
     try:
         extract_to = os.path.dirname(zip_file)
         total_size = os.path.getsize(zip_file)
-        with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+        with zipfile.ZipFile(zip_file, "r") as zip_ref:
             zip_info_list = zip_ref.infolist()
             current_size = 0
             print(f"开始解压 {zip_file} 到 {extract_to}...")
@@ -245,8 +260,7 @@ def unzip_file(zip_file: str, s):
             messagebox.showinfo("dev", "源码运行，无需覆盖")
             return
         exe_local = os.path.dirname(sys.argv[0])
-        cmd = (f'{os.path.join(exe_local, "update.exe")}'
-               f' {os.path.join(extract_to, "report_gui.dist")} {exe_local} {os.getpid()}')
+        cmd = f"{os.path.join(exe_local, 'update.exe')} {os.path.join(extract_to, 'report_gui.dist')} {exe_local} {os.getpid()}"
         cmd += " && pause"
         logger.info(cmd)
         os.system(cmd)

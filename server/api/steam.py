@@ -1,7 +1,9 @@
 import time
+
 from flask import jsonify
+from util.steamapi import steam_friend_info, steam_friend_list, steam_info
+
 from . import api_bp
-from util.steamapi import steam_info, steam_friend_list, steam_friend_info
 
 
 @api_bp.route("/get_steam_info", methods=["GET"])

@@ -131,9 +131,7 @@ def get_1type_data(t, i=None):
         items = {if_decode(ik): json.loads(if_decode(iv)) for ik, iv in items.items()}
         # 按时间排序（使用 key_to_ts 支持多种 key 格式）
         sorted_items = sorted(items.items(), key=lambda x: key_to_ts(x[0]))
-        sorted_values = [
-            value for key, value in sorted_items
-        ]  # key是2025/1/23 10:27:49或1737204278格式，按时间排序
+        sorted_values = [value for key, value in sorted_items]  # key是2025/1/23 10:27:49或1737204278格式，按时间排序
         return {t: sorted_values}
 
 
@@ -169,10 +167,7 @@ def get_limit(t=None):
     if t:
         return int(r.hget("Data_limit", t))
     else:
-        return {
-            if_decode(ik): int(if_decode(iv))
-            for ik, iv in r.hgetall("Data_limit").items()
-        }
+        return {if_decode(ik): int(if_decode(iv)) for ik, iv in r.hgetall("Data_limit").items()}
 
 
 for t in get_all_types():

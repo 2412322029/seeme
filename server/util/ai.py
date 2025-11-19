@@ -4,7 +4,6 @@ import time
 import traceback
 
 from openai import OpenAI
-
 from util.logger import logger
 
 from .config import cfg
@@ -48,8 +47,7 @@ def gen_prompt():
 
 def completion_api(
     prompt=gen_prompt(),
-    tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过500字"
-    "(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条),可以使用html格式",
+    tip="你是总结员,只输出下面数据的总结,加上适当推测，不要详细说每段时间干什么，不超过500字(每种数据都是k:v形式，'::'连接,'|'分隔不同类型,一行一条),可以使用html格式",
 ):
     if cfg.get("without_redis"):
         return (i for i in ["data: without_redis no cache!\n\n"])

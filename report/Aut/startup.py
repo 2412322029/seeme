@@ -56,4 +56,4 @@ def delete_startup(name):
 
 if __name__ == "__main__":
     # set_startup('seeme-report', r'D:\24123\code\py\wayd\report\dist\report_gui.dist\report.exe aut')
-    get_startup('seeme-report')
+    get_startup("seeme-report")

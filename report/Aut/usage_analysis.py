@@ -11,11 +11,11 @@ cursor = conn.cursor()
 
 def print_app_usage_time():
     """打印每个应用的使用时间"""
-    cursor.execute('''
+    cursor.execute("""
     SELECT name, hourly_start_time, SUM(duration) AS total_duration
     FROM app_usage
     GROUP BY name, hourly_start_time
-    ''')
+    """)
     rows = cursor.fetchall()
     for row in rows:
         print(f"应用名称：{row[0]}, 每小时开始时间：{row[1]}, 总持续时间：{row[2]:.2f}秒")
@@ -31,10 +31,10 @@ def delete_app_by_name(app_name):
 
 def get_all_names():
     """获取所有不同的应用名称"""
-    cursor.execute('''
+    cursor.execute("""
     SELECT DISTINCT name
     FROM app_usage
-    ''')
+    """)
     rows = cursor.fetchall()
     names = [row[0] for row in rows]
     return names
@@ -42,11 +42,14 @@ def get_all_names():
 
 def get_total_duration_for_name(name):
     """获取特定应用的总使用时长"""
-    cursor.execute('''
+    cursor.execute(
+        """
     SELECT SUM(duration) AS total_duration
     FROM app_usage
     WHERE name = ?
-    ''', (name,))
+    """,
+        (name,),
+    )
     result = cursor.fetchone()
     total_duration = result[0] if result[0] else 0
     return {"name": name, "total_duration": total_duration}
@@ -57,12 +60,12 @@ def get_total_duration_for_all():
     """获取所有应用的总使用时长"""
     conn = sqlite3.connect(sqlite_file)
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute("""
     SELECT name, SUM(duration) AS total_duration
     FROM app_usage
     GROUP BY name
     ORDER BY total_duration DESC
-    ''')
+    """)
     results = cursor.fetchall()
     total_durations = [{"name": row[0], "total_duration": row[1]} for row in results]
     # print(f"get {len(results)}个应用的总使用时长")
@@ -104,8 +107,8 @@ def print_analysis():
     print(f"{'应用名称':<28} {'总使用时长':<15} {'路径'}")
     print("-" * 70)
     for item in get_total_duration_for_all().result():
-        name = item['name'].split('\\')[-1]
-        duration = format_seconds(item['total_duration'])
+        name = item["name"].split("\\")[-1]
+        duration = format_seconds(item["total_duration"])
         print(f"{name:<30} {duration:<20} {item['name']}")
 
 
@@ -114,13 +117,16 @@ def get_hourly_duration_for_name(name):
     """获取特定应用的每小时使用时长"""
     conn = sqlite3.connect(sqlite_file)
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(
+        """
     SELECT hourly_start_time, MAX(end_time), SUM(duration) AS total_duration
     FROM app_usage
     WHERE name = ?
     GROUP BY hourly_start_time
     ORDER BY hourly_start_time
-    ''', (name,))
+    """,
+        (name,),
+    )
     rows = cursor.fetchall()
     s = ""
     for row in rows:
@@ -133,12 +139,12 @@ def get_hourly_duration_for_name(name):
 
 def get_hourly_duration_for_all():
     """获取所有应用的每小时使用时长"""
-    cursor.execute('''
+    cursor.execute("""
     SELECT name, hourly_start_time, SUM(duration) AS total_duration
     FROM app_usage
     GROUP BY name, hourly_start_time
     ORDER BY name, hourly_start_time
-    ''')
+    """)
     rows = cursor.fetchall()
 
     # 将结果按应用名称分组
@@ -161,18 +167,21 @@ def get_data_for_hourly_start_time(start_time, end_time):
     :param end_time: 结束时间，格式为 'YYYY-MM-DD HH:00:00'
     :return: 查询结果列表
     """
-    cursor.execute('''
+    cursor.execute(
+        """
     SELECT name, hourly_start_time, start_time, end_time, duration
     FROM app_usage
     WHERE hourly_start_time BETWEEN ? AND ?
     ORDER BY hourly_start_time
-    ''', (start_time, end_time))
+    """,
+        (start_time, end_time),
+    )
     rows = cursor.fetchall()
     data = [{"name": row[0], "duration": row[4]} for row in rows]
     return data
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # print_app_usage_time()
     # print(get_total_duration_for_all())
     print_analysis()

@@ -5,9 +5,7 @@ from util.config import SECRET_KEY
 
 from . import api_bp
 
-UPLOAD_ICON_FOLDER = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "templates", "exe_icon")
-)
+UPLOAD_ICON_FOLDER = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "templates", "exe_icon"))
 os.makedirs(UPLOAD_ICON_FOLDER, exist_ok=True)
 
 
@@ -30,20 +28,14 @@ def upload_exeIcon():
             saved_files.append(filename)
         else:
             return jsonify({"error": "Invalid file type only support .png"}), 400
-    return jsonify(
-        {"message": "File uploaded successfully", "filename": saved_files}
-    ), 200
+    return jsonify({"message": "File uploaded successfully", "filename": saved_files}), 200
 
 
 @api_bp.route("/get_allIcon", methods=["GET"])
 def get_allIcon():
     try:
         all_entries = os.listdir(UPLOAD_ICON_FOLDER)
-        filenames = [
-            entry.split(".png")[0]
-            for entry in all_entries
-            if os.path.isfile(os.path.join(UPLOAD_ICON_FOLDER, entry))
-        ]
+        filenames = [entry.split(".png")[0] for entry in all_entries if os.path.isfile(os.path.join(UPLOAD_ICON_FOLDER, entry))]
         return jsonify(filenames), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

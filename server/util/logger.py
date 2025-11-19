@@ -27,9 +27,5 @@ file_handler = RotatingFileHandler(
     maxBytes=1024 * 1024 * 5,
     backupCount=5,
 )
-file_handler.setFormatter(
-    RequestFormatter(
-        "%(asctime)s %(levelname)s %(remote_addr)s - %(url)s : %(message)s [in %(filename)s:%(lineno)d]"
-    )
-)
+file_handler.setFormatter(RequestFormatter("%(asctime)s %(levelname)s %(remote_addr)s - %(url)s : %(message)s [in %(filename)s:%(lineno)d]"))
 logger.addHandler(file_handler)

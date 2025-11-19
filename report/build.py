@@ -16,7 +16,7 @@ CONFIG = {
     "update_source": "update.exe",
     "upx_path": "upx",
     "7z_path": "7z",
-    "version_file": "Aut/logger.py"
+    "version_file": "Aut/logger.py",
 }
 
 
@@ -82,7 +82,7 @@ def get_version_info() -> Tuple[bool, str]:
         (f"补丁版本 ({current_version} → {parts[0]}.{parts[1]}.{parts[2] + 1})", 2),
         (f"次版本号 ({current_version} → {parts[0]}.{parts[1] + 1}.0)", 1),
         (f"主版本号 ({current_version} → {parts[0] + 1}.0.0)", 0),
-        ("不更新版本", None)
+        ("不更新版本", None),
     ]
 
     for i, (desc, _) in enumerate(choices, 1):
@@ -114,15 +114,11 @@ def get_version_info() -> Tuple[bool, str]:
     input(f"{new_version=}(Press Enter to continue)")
     try:
         with open(version_file, "w", encoding="utf-8") as f:
-            new_content = re.sub(
-                r'__version__\s*=\s*".*?"',
-                f'__version__ = "{new_version}"',
-                content
-            )
+            new_content = re.sub(r'__version__\s*=\s*".*?"', f'__version__ = "{new_version}"', content)
             new_content = re.sub(
                 r'__buildAt__\s*=\s*".*?"',
                 f'__buildAt__ = "{__buildAt__}"',
-                new_content
+                new_content,
             )
             f.write(new_content)
     except IOError as e:
@@ -139,7 +135,7 @@ def build_gui_app(config: BuildConfig) -> None:
         f"--enable-plugin=tk-inter --windows-icon-from-ico={CONFIG['icon_source']} "
         f"--output-filename={CONFIG['gui_filename']} --output-dir={CONFIG['output_dir']} "
         f"--no-deployment-flag=self-execution --windows-console-mode=disable "
-        f'''--include-data-files="icon.ico=icon.ico" '''
+        f"""--include-data-files="icon.ico=icon.ico" """
         f"--product-name=report --file-version={config.new_version} "  # no  --onefile 启动时解压缩,变慢
         f"report_gui.py"
     )
@@ -152,8 +148,8 @@ def build_gui_app(config: BuildConfig) -> None:
             print_color("update.exe文件已复制到目标目录", "92")
         else:
             print_color("警告：未找到update.exe，使用go编译", "92")
-            check_tool('go')
-            execute_command('go build -o update.exe update.go')
+            check_tool("go")
+            execute_command("go build -o update.exe update.go")
             shutil.copy(CONFIG["update_source"], os.path.join(dest_dir, "update.exe"))
     except IOError as e:
         print_color(f"复制update.exe文件失败: {str(e)}", "91")
@@ -172,11 +168,7 @@ def build_cli_app(config: BuildConfig) -> None:
 def process_upx() -> None:
     """使用UPX压缩可执行文件"""
     print_header("使用UPX压缩")
-    source_path = os.path.join(
-        CONFIG["output_dir"],
-        CONFIG["cli_dir"],
-        CONFIG["cli_filename"]
-    )
+    source_path = os.path.join(CONFIG["output_dir"], CONFIG["cli_dir"], CONFIG["cli_filename"])
     dest_dir = os.path.join(CONFIG["output_dir"], CONFIG["gui_dir"])
 
     try:
@@ -211,9 +203,7 @@ def create_7z_archive(config: BuildConfig) -> None:
     archive_name = f"{CONFIG['gui_dir']}.{config.new_version}.zip"
     archive_path = os.path.join(CONFIG["output_dir"], archive_name)
 
-    command = (
-        f"cd {CONFIG["output_dir"]} && {CONFIG['7z_path']} a -tzip {archive_name} {CONFIG["gui_dir"]}\\*"
-    )
+    command = f"cd {CONFIG['output_dir']} && {CONFIG['7z_path']} a -tzip {archive_name} {CONFIG['gui_dir']}\\*"
     execute_command(command)
     print_color(f"已创建压缩包: {archive_path}", "92")
     sha256_hash = calculate_sha256(archive_path)

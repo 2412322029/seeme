@@ -3,12 +3,12 @@ import re
 import subprocess
 import time
 import traceback
-import requests
+from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
 from fabric import Connection
 from sum import compare_sum_txt
-from pathlib import Path
 
 # 加载.env文件中的配置
 load_dotenv()
@@ -62,9 +62,7 @@ def update_deployment_info(DEPLOY_TIME, GIT_HASH):
     filename = Path("api") / "misc.py"
     with open(filename, "r", encoding="utf8") as file:
         content = file.read()
-    content = re.sub(
-        r'"deploy_time": ".*?",', f'"deploy_time": "{DEPLOY_TIME}",', content
-    )
+    content = re.sub(r'"deploy_time": ".*?",', f'"deploy_time": "{DEPLOY_TIME}",', content)
     content = re.sub(r'"git_hash": ".*?"', f'"git_hash": "{GIT_HASH}"', content)
     with open(filename, "w", encoding="utf8") as file:
         file.write(content)
@@ -80,9 +78,7 @@ def upload_frontend_files():
         conn.run(f"mkdir -p {REMOTE_DIR}")
         # 删除远程目录下的 html, css 和 js 文件
         print("Deleting existing html, css and js files in remote directory...")
-        if conn.run(
-            f"rm -f {REMOTE_FRONTEND_DIR}/assets/*.css {REMOTE_FRONTEND_DIR}/assets/*.js {REMOTE_FRONTEND_DIR}/index.html"
-        ):
+        if conn.run(f"rm -f {REMOTE_FRONTEND_DIR}/assets/*.css {REMOTE_FRONTEND_DIR}/assets/*.js {REMOTE_FRONTEND_DIR}/index.html"):
             print("Deleted existing files successfully.")
         else:
             print("Failed to delete existing files.")
@@ -104,9 +100,7 @@ def upload_frontend_files():
         for filename in os.listdir(local_assets_path):
             local_file_path = rf"{local_assets_path}\{filename}"
             remote_file_path = rf"{remote_assets_path}/{filename}"
-            if os.path.isfile(local_file_path) and any(
-                filename.endswith(ext) for ext in FILE_TYPES
-            ):
+            if os.path.isfile(local_file_path) and any(filename.endswith(ext) for ext in FILE_TYPES):
                 print(f"Uploading {local_file_path} to {remote_file_path}...", end=" ")
                 conn.put(local_file_path, remote_file_path)
                 print(f"Uploaded {filename} successfully.")
@@ -130,14 +124,9 @@ def upload_files():
         if not files_to_upload:
             print("No files to upload.")
         else:
-            input(
-                "\n".join(files_to_upload)
-                + "\nPress Enter to continue uploading the following files:"
-            )
+            input("\n".join(files_to_upload) + "\nPress Enter to continue uploading the following files:")
         for relative_path in files_to_upload:
-            local_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), relative_path
-            )
+            local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
             if not os.path.exists(local_path):
                 print(f"Local file does not exist, skipping: {local_path}")
                 continue
@@ -153,13 +142,9 @@ def upload_files():
 
             print(f"Uploading {local_path} to {remote_path}...", end=" ")
             try:
-                mkdir_res = conn.run(
-                    f"mkdir -p '{remote_dir_escaped}'", hide=True, warn=True
-                )
+                mkdir_res = conn.run(f"mkdir -p '{remote_dir_escaped}'", hide=True, warn=True)
                 if not mkdir_res.ok:
-                    print(
-                        f"\nWarning: failed to create remote dir {remote_dir} (continuing)."
-                    )
+                    print(f"\nWarning: failed to create remote dir {remote_dir} (continuing).")
             except Exception as e:
                 print(f"\nError creating remote directory {remote_dir}: {e}")
             # 尝试继续上传，可能会失败
@@ -180,7 +165,9 @@ def upload_files():
             if not success:
                 print(f"Failed to upload {relative_path} after retries.")
             continue
-
+        if "pyproject.toml" in files_to_upload:
+            print("Installing dependencies on remote server...")
+            er(conn.sudo(f"bash -l -c 'cd {REMOTE_DIR}; source .venv/bin/activate; uv sync --no-dev'"))
         # 更改远程目录的所有权
         print("Changing ownership of remote directory...")
         if conn.sudo(f"chown -R www-data:www-data {REMOTE_DIR}").ok:
@@ -189,9 +176,7 @@ def upload_files():
             print("Failed to change ownership.")
         # Ensure restart script exists and run it with sudo, quoting the path to handle spaces/special chars
         print("Executing restart script...")
-        conn.sudo(
-            f"bash -l -c 'cd {REMOTE_DIR}; source .venv/bin/activate; ./restart.sh'"
-        )
+        conn.sudo(f"bash -l -c 'cd {REMOTE_DIR}; source .venv/bin/activate; ./restart.sh'")
         # os.system(f"ssh -p {REMOTE_PORT} {REMOTE_USER}@{REMOTE_HOST} 'sudo bash -l -c \"{restart_path}\"'")
     print("All specified files have been uploaded.")
 
@@ -202,17 +187,12 @@ def verify_deployment_info(DEPLOY_TIME, GIT_HASH):
         resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             remote_info = resp.json()
-            if (
-                remote_info.get("deploy_time") == DEPLOY_TIME
-                and remote_info.get("git_hash") == GIT_HASH
-            ):
+            if remote_info.get("deploy_time") == DEPLOY_TIME and remote_info.get("git_hash") == GIT_HASH:
                 print("Deployment info verified successfully.")
             else:
                 print("Deployment info verification failed.")
                 print(f"Expected: {DEPLOY_TIME}, {GIT_HASH}")
-                print(
-                    f"Actual: {remote_info.get('deploy_time')}, {remote_info.get('git_hash')}"
-                )
+                print(f"Actual: {remote_info.get('deploy_time')}, {remote_info.get('git_hash')}")
             return remote_info
         else:
             print(f"Failed to access remote server: {resp.status_code} {resp.reason}")
@@ -226,18 +206,11 @@ def main():
     try:
         if input("build the frontend application? (y/n): ").lower() == "y":
             build_frontend_with_copy()
-            if (
-                input("upload frontend files to the remote server? (y/n): ").lower()
-                == "y"
-            ):
+            if input("upload frontend files to the remote server? (y/n): ").lower() == "y":
                 upload_frontend_files()
         if input("upload files to the remote server? (y/n): ").lower() == "y":
             DEPLOY_TIME = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            GIT_HASH = (
-                subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
-                .decode("utf-8")
-                .strip()
-            )
+            GIT_HASH = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
             update_deployment_info(DEPLOY_TIME, GIT_HASH)
             upload_files()
             # print("去手动开启服务器吧~ pgrep -f gunicorn,  gunicorn -c gunicorn.conf.py main:app -D")

@@ -4,7 +4,6 @@ import time
 
 import requests
 from flask import jsonify, request
-
 from util.config import SECRET_KEY, cfg
 from util.ip import ip_api
 from util.notification import notify
@@ -19,11 +18,7 @@ def leave_message_route():
     secret = recaptcha_cfg.get("secret", "")
     if not secret:
         return jsonify({"error": "未配置 recaptcha.secret"}), 400
-    token = (
-        request.form.get("g-recaptcha-response")
-        or (request.get_json(silent=True) or {}).get("recaptcha_token")
-        or request.headers.get("Recaptcha-Token")
-    )
+    token = request.form.get("g-recaptcha-response") or (request.get_json(silent=True) or {}).get("recaptcha_token") or request.headers.get("Recaptcha-Token")
     if not token:
         return jsonify({"error": "recaptcha token missing"}), 400
     data = request.get_json(force=True, silent=True) or request.form or {}
@@ -76,7 +71,7 @@ def leave_message_route():
         - **IP**: `{client_ip}`
         - **位置**: `{location}`
         - **UA**: `{user_agent}`
-        **内容**: 
+        **内容**:
         {content}
         """
         notify("网站新留言", content=content)
@@ -162,12 +157,8 @@ def del_message():
 
         removed_count = del_data("message", report_time)
         if removed_count > 0:
-            return jsonify(
-                {"message": f"Removed {removed_count} item(s) from message"}
-            ), 200
+            return jsonify({"message": f"Removed {removed_count} item(s) from message"}), 200
         else:
-            return jsonify(
-                {"message": "No items found with the specified report_time"}
-            ), 404
+            return jsonify({"message": "No items found with the specified report_time"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500

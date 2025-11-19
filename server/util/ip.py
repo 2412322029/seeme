@@ -7,13 +7,7 @@ def is_public_ip(ip: str) -> bool:
     """合法且公网可路由的 IPv4/IPv6"""
     try:
         obj = ipaddress.ip_address(ip)
-        return not (
-            obj.is_private
-            | obj.is_loopback
-            | obj.is_link_local
-            | obj.is_multicast
-            | obj.is_reserved
-        )
+        return not (obj.is_private | obj.is_loopback | obj.is_link_local | obj.is_multicast | obj.is_reserved)
     except ValueError:
         return False
 

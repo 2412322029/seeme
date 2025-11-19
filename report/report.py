@@ -7,17 +7,17 @@ from datetime import datetime
 from pprint import pprint
 
 import Aut
-from Aut import read_pid, is_process_running, kill_process, pause_file, pid_file, icon_dir
+from Aut import icon_dir, is_process_running, kill_process, pause_file, pid_file, read_pid
 from Aut.config import cfg
-from Aut.logger import logger, log_file
+from Aut.logger import log_file, logger
 
 try:
-    import requests  # pip install requests
-    from PIL import Image  # pip install pillow
     import psutil  # pip install psutil
-    import win32process  # pip install pywin32
+    import requests  # pip install requests
     import win32gui
+    import win32process  # pip install pywin32
     import win32ui
+    from PIL import Image  # pip install pillow
 except ModuleNotFoundError:
     raise ModuleNotFoundError("Module Not Found. pip install pillow,psutil,pywin32,requests")
 
@@ -70,22 +70,25 @@ def check_process(pf, check_pause=True, pt=True):
             process = psutil.Process(pid)
             info["status"] = process.status()
             rss = process.memory_info().rss
-            info["memory"] = f'{rss // (1024 ** 2)}'
+            info["memory"] = f"{rss // (1024**2)}"
             info["cmdline"] = " ".join(process.cmdline())
             create_time = datetime.fromtimestamp(process.create_time())
-            info["create_time"] = (f"{create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
-                                   f"({timeAgo(create_time)} ago)")
+            info["create_time"] = f"{create_time.strftime('%Y-%m-%d %H:%M:%S')}  ({timeAgo(create_time)} ago)"
             ifPrint(f"status      : \033[92m{info['status']}\033[0m", IF=pt)
             ifPrint(f"mem(rss)    : {info['memory']} MB", IF=pt)
             ifPrint(f"cmdline     : {info['cmdline']}", IF=pt)
-            ifPrint(f"create time : {create_time.strftime('%Y-%m-%d %H:%M:%S')}  "
-                    f"(\033[92m{timeAgo(create_time)} ago\033[0m)", IF=pt)
+            ifPrint(
+                f"create time : {create_time.strftime('%Y-%m-%d %H:%M:%S')}  (\033[92m{timeAgo(create_time)} ago\033[0m)",
+                IF=pt,
+            )
             if os.path.exists(pause_file) and check_pause:
                 info["status"] = "paused"
                 getctime = datetime.fromtimestamp(os.path.getctime(pause_file))
                 info["paused"] = f"{getctime} ({timeAgo(getctime).strip()} ago!)"
-                ifPrint(f"The process was paused at  {getctime} (\033[91m{timeAgo(getctime).strip()} ago!\033[0m)",
-                        IF=pt)
+                ifPrint(
+                    f"The process was paused at  {getctime} (\033[91m{timeAgo(getctime).strip()} ago!\033[0m)",
+                    IF=pt,
+                )
         else:
             info["status"] = "stop"
             ifPrint("status      : \033[91mstop\033[0m", IF=pt)
@@ -101,8 +104,7 @@ def check_process(pf, check_pause=True, pt=True):
 def get_allIcon():
     try:
         all_entries = os.listdir(icon_dir)
-        filenames = [entry for entry in all_entries if
-                     os.path.isfile(os.path.join(icon_dir, entry))]
+        filenames = [entry for entry in all_entries if os.path.isfile(os.path.join(icon_dir, entry))]
         return filenames
     except Exception as e:
         logger.error(f"{e}")
@@ -135,9 +137,14 @@ def save_exe_icon(exe_path, exe_name: str, a=32):
         bmpstr = hbmp.GetBitmapBits(True)
         print(bmpinfo, len(bmpstr))
         img = Image.frombuffer(
-            'RGBA',
-            (bmpinfo['bmWidth'], bmpinfo['bmHeight']),
-            bmpstr, 'raw', 'BGRA', 0, 1)
+            "RGBA",
+            (bmpinfo["bmWidth"], bmpinfo["bmHeight"]),
+            bmpstr,
+            "raw",
+            "BGRA",
+            0,
+            1,
+        )
         img = img.resize((32, 32))
         img.save(f"{icon_dir}/{exe_name}.png", format="PNG")
         logger.info(f"{exe_name}.png save successfully!")
@@ -178,7 +185,7 @@ def get_all_window_info(args):
                 return
             if exe_name in Exclude_Process:
                 return
-            if exe_name == 'explorer.exe' and title == "Program Manager":
+            if exe_name == "explorer.exe" and title == "Program Manager":
                 return
             hicon = save_exe_icon(exe_path, exe_name)
             process_info = {"exe_name": exe_name, "title": title}
@@ -194,21 +201,22 @@ def get_all_window_info(args):
             upload_files.append(r[0] + ".png")
     if upload_files:
         upload_icon(args, upload_files)
-    return {"activity_window": result, "report_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    return {
+        "activity_window": result,
+        "report_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
 
 
 # 发送数据到Flask API
 def send_data_to_api(args, running_exe, report_time, exe_name, other: dict):
     url = args.url + "/set_info"
-    headers = {
-        'API-KEY': args.key
-    }
+    headers = {"API-KEY": args.key}
     payload = {
-        'type': 'pc',
-        'running_exe': running_exe,
-        'exe_name': exe_name,
-        'other': other,
-        'report_time': report_time
+        "type": "pc",
+        "running_exe": running_exe,
+        "exe_name": exe_name,
+        "other": other,
+        "report_time": report_time,
     }
     try:
         response = requests.post(url, headers=headers, json=payload)
@@ -233,9 +241,7 @@ def get_limit(args):
 
 def set_limit(args):
     url = args.url + "/set_limit"
-    headers = {
-        'API-KEY': args.key
-    }
+    headers = {"API-KEY": args.key}
     try:
         payload = {limit_type: limit_number for limit_type, limit_number in args.limits}
         response = requests.post(url, headers=headers, json=payload)
@@ -272,7 +278,7 @@ def get_allServerIcon(args):
                 logger.warning(f"{args.url} is unreachable. Retry {times} times...")
             # 指数退避等待
             times += 1 if times < 6 else 0
-            wait_time = min(60, (2 ** times) + 10)
+            wait_time = min(60, (2**times) + 10)
             time.sleep(wait_time)
     try:
         response = requests.get(url)
@@ -295,13 +301,21 @@ def upload_icon(args, filenames: list[str]):
         print(f"skip upload,but {filenames} in ServerIcon")
         return
     url = args.url + "/upload_exeIcon"
-    headers = {'API-KEY': args.key}
+    headers = {"API-KEY": args.key}
     try:
         files_to_upload = []
         logger.info(f"ServerIcon not have {filter_filenames} try upload ")
         for filename in filter_filenames:
             files_to_upload.append(
-                ("files", (filename, open(os.path.join(icon_dir, filename), "rb"), "application/octet-stream")))
+                (
+                    "files",
+                    (
+                        filename,
+                        open(os.path.join(icon_dir, filename), "rb"),
+                        "application/octet-stream",
+                    ),
+                )
+            )
         response = requests.post(url, headers=headers, files=files_to_upload)
         if response.status_code == 200:
             ServerIcon.extend([f.split(".png")[0] for f in filter_filenames])  # 上传成功后更新服务器icon list
@@ -321,14 +335,8 @@ def get_info(args):
 
 
 def del_info(args):
-    headers = {
-        'API-KEY': args.key,
-        'Content-Type': 'application/json'
-    }
-    payload = {
-        'type': args.type,
-        'report_time': args.report_time
-    }
+    headers = {"API-KEY": args.key, "Content-Type": "application/json"}
+    payload = {"type": args.type, "report_time": args.report_time}
     try:
         response = requests.post(args.url + "/del_info", headers=headers, json=payload)
         if response.status_code == 200:
@@ -367,10 +375,10 @@ def resume_process():
 
 
 def logcat(tail=10, pt=True, lf=log_file):
-    red = '\033[91m'
-    end = '\033[0m'
+    red = "\033[91m"
+    end = "\033[0m"
     try:
-        with open(lf, 'r', encoding='utf-8') as file:
+        with open(lf, "r", encoding="utf-8") as file:
             lines = file.readlines()
     except Exception as e:
         ifPrint(f"读取文件时出错: {e}", IF=pt)
@@ -397,32 +405,43 @@ def args_parser():
             raise argparse.ArgumentTypeError(f"报告周期必须大于 10 秒，当前值为 {value}")
         return value
 
-    parser = argparse.ArgumentParser(description='''定时报告命令行程序''')
-    parser.add_argument('-v', '--version', action='store_true', help='显示版本')
-    subparsers = parser.add_subparsers(dest='command', help='可用的命令')
-    parser_log = subparsers.add_parser('log', help='查看最新日志')
-    parser_log.add_argument("-t", "--tail", type=int, nargs="?", default=10, help="显示的最后几行，默认为10行")
-    subparsers.add_parser('status', help='查询进程状态')
-    subparsers.add_parser('kill', help='杀死进程')
-    subparsers.add_parser('pause', help='暂停进程')
-    subparsers.add_parser('resume', help='恢复进程')
+    parser = argparse.ArgumentParser(description="""定时报告命令行程序""")
+    parser.add_argument("-v", "--version", action="store_true", help="显示版本")
+    subparsers = parser.add_subparsers(dest="command", help="可用的命令")
+    parser_log = subparsers.add_parser("log", help="查看最新日志")
+    parser_log.add_argument(
+        "-t",
+        "--tail",
+        type=int,
+        nargs="?",
+        default=10,
+        help="显示的最后几行，默认为10行",
+    )
+    subparsers.add_parser("status", help="查询进程状态")
+    subparsers.add_parser("kill", help="杀死进程")
+    subparsers.add_parser("pause", help="暂停进程")
+    subparsers.add_parser("resume", help="恢复进程")
     parent_key_parser = argparse.ArgumentParser(add_help=False)
-    parent_key_parser.add_argument('-k', '--key', required=report_key is None, help='密钥')
+    parent_key_parser.add_argument("-k", "--key", required=report_key is None, help="密钥")
     parent_url_parser = argparse.ArgumentParser(add_help=False)
-    parent_url_parser.add_argument('-u', '--url', required=report_url is None, help='api接口, 如: http://127.0.0.1')
-    parser_run = subparsers.add_parser('run', help='运行定时报告程序',
-                                       parents=[parent_key_parser, parent_url_parser])
-    parser_run.add_argument('--test', action='store_true', help='测试api')
-    parser_run.add_argument('--without_check', action='store_true', help='不检查进程是否存在')
-    parser_run.add_argument('-c', '--cycle_time', type=check_cycle_time, help='报告周期(单位秒)', default=600)
+    parent_url_parser.add_argument("-u", "--url", required=report_url is None, help="api接口, 如: http://127.0.0.1")
+    parser_run = subparsers.add_parser("run", help="运行定时报告程序", parents=[parent_key_parser, parent_url_parser])
+    parser_run.add_argument("--test", action="store_true", help="测试api")
+    parser_run.add_argument("--without_check", action="store_true", help="不检查进程是否存在")
+    parser_run.add_argument(
+        "-c",
+        "--cycle_time",
+        type=check_cycle_time,
+        help="报告周期(单位秒)",
+        default=600,
+    )
     # 服务器端命令
-    subparsers.add_parser('getlimit', help='获取服务器限制值', parents=[parent_url_parser])
-    parser_get_info = subparsers.add_parser('getinfo', help='获取服务器数据', parents=[parent_url_parser])
-    parser_get_info.add_argument('-t', '--type', help='数据类型如 pc phone..')
-    parser_del_info = subparsers.add_parser('delinfo', help='删除服务器数据',
-                                            parents=[parent_key_parser, parent_url_parser])
-    parser_del_info.add_argument('-t', '--type', required=True, help='要删除数据的类型，如 pc phone..')
-    parser_del_info.add_argument('-rt', '--report_time', required=True, help='要删除数据的时间')
+    subparsers.add_parser("getlimit", help="获取服务器限制值", parents=[parent_url_parser])
+    parser_get_info = subparsers.add_parser("getinfo", help="获取服务器数据", parents=[parent_url_parser])
+    parser_get_info.add_argument("-t", "--type", help="数据类型如 pc phone..")
+    parser_del_info = subparsers.add_parser("delinfo", help="删除服务器数据", parents=[parent_key_parser, parent_url_parser])
+    parser_del_info.add_argument("-t", "--type", required=True, help="要删除数据的类型，如 pc phone..")
+    parser_del_info.add_argument("-rt", "--report_time", required=True, help="要删除数据的时间")
 
     class LimitAction(argparse.Action):
         def __call__(self, pa, namespace, values, option_string=None):
@@ -443,28 +462,45 @@ def args_parser():
                 limits.append((limit_type, limit_number))
             setattr(namespace, self.dest, limits)
 
-    parser_set = subparsers.add_parser('setlimit', help='设置服务器数据最大个数',
-                                       parents=[parent_key_parser, parent_url_parser])
-    parser_set.add_argument('-tn', '--type-number', nargs='+', action=LimitAction, required=True,
-                            dest='limits', help="限制类型 'pc', 'browser', 'phone' 和对应的限制行数")
-    parser_aut = subparsers.add_parser('aut', help='运行应用使用时间统计, 定时上传app_usage.db到服务器(未完成)', )
+    parser_set = subparsers.add_parser(
+        "setlimit",
+        help="设置服务器数据最大个数",
+        parents=[parent_key_parser, parent_url_parser],
+    )
+    parser_set.add_argument(
+        "-tn",
+        "--type-number",
+        nargs="+",
+        action=LimitAction,
+        required=True,
+        dest="limits",
+        help="限制类型 'pc', 'browser', 'phone' 和对应的限制行数",
+    )
+    parser_aut = subparsers.add_parser(
+        "aut",
+        help="运行应用使用时间统计, 定时上传app_usage.db到服务器(未完成)",
+    )
     # parents=[parent_key_parser, parent_url_parser]
-    parser_aut.add_argument('--status', action='store_true', help='查询 "应用使用时间统计" 的进程状态 and exit')
-    parser_aut.add_argument('--kill', action='store_true', help='杀死 "应用使用时间统计" 进程 and exit')
-    parser_aut.add_argument('--analysis', action='store_true', help='显示应用使用时间统计')
-    parser_aut.add_argument('--without_check', action='store_false', help='不检查进程是否存在')
+    parser_aut.add_argument(
+        "--status",
+        action="store_true",
+        help='查询 "应用使用时间统计" 的进程状态 and exit',
+    )
+    parser_aut.add_argument("--kill", action="store_true", help='杀死 "应用使用时间统计" 进程 and exit')
+    parser_aut.add_argument("--analysis", action="store_true", help="显示应用使用时间统计")
+    parser_aut.add_argument("--without_check", action="store_false", help="不检查进程是否存在")
 
     parser_args = parser.parse_args()
     # 确保 args.key 和 args.url 存在
-    if not hasattr(parser_args, 'key'):
+    if not hasattr(parser_args, "key"):
         parser_args.key = None
-    if not hasattr(parser_args, 'url'):
+    if not hasattr(parser_args, "url"):
         parser_args.url = None
     if report_key and not parser_args.key:
         parser_args.key = report_key
     if report_url and not parser_args.url:
         parser_args.url = report_url
-    if not hasattr(parser_args, 'without_check'):
+    if not hasattr(parser_args, "without_check"):
         parser_args.without_check = False
     return parser_args, parser
 
@@ -485,11 +521,10 @@ def run_aut(check=True):
         if check:
             p = read_pid(Aut.aut_pid_file)
             if is_process_running(p):
-                logger.error(
-                    f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
+                logger.error(f"应用使用时间统计 进程 pid={p} 已经在运行勿重复执行。如果这不是本程序 删除aut.pid文件后重试")
                 check_process(Aut.aut_pid_file, check_pause=False)
                 sys.exit(0)
-        logger.info("start-aut".center(50, '-'))
+        logger.info("start-aut".center(50, "-"))
         Aut.run()
     except Exception as e:
         logger.fatal(f"{e}")
@@ -505,10 +540,10 @@ def run(args, check=True):
                 check_process(pid_file)
                 sys.exit(0)
         # 保存进程ID到文件
-        with open(pid_file, 'w') as f:
+        with open(pid_file, "w") as f:
             f.write(str(os.getpid()))
         print("start...5")
-        logger.info("start".center(50, '-'))
+        logger.info("start".center(50, "-"))
         get_allServerIcon(args)
         time.sleep(5)
         while True:
@@ -518,8 +553,13 @@ def run(args, check=True):
                     continue  # 如果 result 为 None，则跳过本次循环
                 title, exe_name, hicon = result
                 times = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                send_data_to_api(args, running_exe=title, report_time=times, exe_name=exe_name,
-                                 other=get_all_window_info(args))
+                send_data_to_api(
+                    args,
+                    running_exe=title,
+                    report_time=times,
+                    exe_name=exe_name,
+                    other=get_all_window_info(args),
+                )
                 if hicon:
                     upload_icon(args, [exe_name + ".png"])
             time.sleep(int(args.cycle_time))
@@ -530,29 +570,34 @@ def run(args, check=True):
 
 
 def test_run(args):
-    logger.info(f"配置文件 {report_url=},report_key='{report_key[:6]}*******'".center(50, ' '))
-    logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, ' '))
+    logger.info(f"配置文件 {report_url=},report_key='{report_key[:6]}*******'".center(50, " "))
+    logger.info(f"{args.url=},args.key='{args.key[:6]}*******'".center(50, " "))
     time.sleep(1)
     get_allServerIcon(args)
     title_t, exe_name_t, hicon_t = get_active_window_title()
     time_t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    send_data_to_api(args, running_exe=title_t, report_time=time_t, exe_name=exe_name_t,
-                     other=get_all_window_info(args))
+    send_data_to_api(
+        args,
+        running_exe=title_t,
+        report_time=time_t,
+        exe_name=exe_name_t,
+        other=get_all_window_info(args),
+    )
     if hicon_t:
         upload_icon(args, [exe_name_t + ".png"])
 
 
 def main(args):
     if args.version:
-        print(f'version {Aut.__version__}')
-        print(f'build at {Aut.__buildAt__}')
+        print(f"version {Aut.__version__}")
+        print(f"build at {Aut.__buildAt__}")
         sys.exit(0)
-    if args.command == 'run':
+    if args.command == "run":
         if args.test:
             test_run(args)
             sys.exit(0)
         run(args, check=args.without_check)
-    if args.command == 'aut':
+    if args.command == "aut":
         if args.status:
             check_process(Aut.aut_pid_file, check_pause=False)
             sys.exit(0)
@@ -563,26 +608,26 @@ def main(args):
             Aut.print_analysis()
             sys.exit(0)
         run_aut(check=args.without_check)
-    elif args.command == 'status':
+    elif args.command == "status":
         print("自动汇报".center(50, "-"))
         check_process(pid_file)
         print("应用使用时间统计".center(50, "-"))
         check_process(Aut.aut_pid_file, check_pause=False)
-    elif args.command == 'kill':
+    elif args.command == "kill":
         kill_process(pid_file)
-    elif args.command == 'pause':
+    elif args.command == "pause":
         pause_process()
-    elif args.command == 'resume':
+    elif args.command == "resume":
         resume_process()
-    elif args.command == 'log':
+    elif args.command == "log":
         logcat(args.tail)
-    elif args.command == 'getlimit':
+    elif args.command == "getlimit":
         get_limit(args)
-    elif args.command == 'setlimit':
+    elif args.command == "setlimit":
         set_limit(args)
-    elif args.command == 'getinfo':
+    elif args.command == "getinfo":
         get_info(args)
-    elif args.command == 'delinfo':
+    elif args.command == "delinfo":
         del_info(args)
     else:
         print("这是一个命令行程序，添加 -h 查看帮助。")
