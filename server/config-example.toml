@@ -40,4 +40,4 @@ methods = "pushplus"
 
 # PushPlus https://www.pushplus.plus/
 [notification.pushplus]
-token = "" 
+token = ""

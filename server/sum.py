@@ -3,8 +3,11 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from fabric import Connection
 
+try:
+    from fabric import Connection
+except ImportError:
+    pass
 # 排除文件和文件夹
 EXCLUDE_DIRS = {
     "__pycache__",
