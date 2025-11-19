@@ -1,6 +1,8 @@
 import re
 
 from flask import jsonify, request
+
+from util.config import SECRET_KEY
 from util.rediscache import r
 
 from . import api_bp
@@ -38,5 +40,17 @@ def paste_post(mmd):
             return jsonify({"error": "data exceeds 8KB limit"}), 400
         r.set("paste:" + mmd, data)
         return jsonify({"status": "ok", "key": mmd}), 200
+    except Exception as e:
+        return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500
+
+
+@api_bp.route("/all_pastes_keys", methods=["GET"])
+def all_pastes_keys():
+    if request.headers.get("API-KEY") != SECRET_KEY:
+        return jsonify({"error": "Invalid API key"}), 403
+    try:
+        keys = r.keys("paste:*")
+        keys = [key.decode("utf-8").split("paste:")[1] if isinstance(key, bytes) else key.split("paste:")[1] for key in keys]
+        return jsonify({"keys": keys}), 200
     except Exception as e:
         return jsonify({"error": "服务器内部错误", "detail": str(e)}), 500

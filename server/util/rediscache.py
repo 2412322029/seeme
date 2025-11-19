@@ -12,7 +12,9 @@ if cfg.get("without_redis"):
 else:
     import redis
 
-    r = redis.StrictRedis(**cfg.get("redis"))
+    # 使用连接池
+    pool = redis.ConnectionPool(**cfg.get("redis"))
+    r = redis.StrictRedis(connection_pool=pool)
     logger.info("use redis")
 
 Data_limit_default = cfg.get("Data_limit_default")

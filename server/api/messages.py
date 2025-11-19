@@ -4,6 +4,7 @@ import time
 
 import requests
 from flask import jsonify, request
+
 from util.config import SECRET_KEY, cfg
 from util.ip import ip_api
 from util.notification import notify
@@ -36,11 +37,12 @@ def leave_message_route():
     if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
         return jsonify({"error": "invalid email"}), 400
     report_time = time.time()
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-    if client_ip:
-        client_ip = client_ip.split(",")[0].strip()
+    # X-Forwarded-For 可能包含多个 IP，取第一个为客户端真实 IP
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
     user_agent = request.headers.get("User-Agent")
-    location = ip_api(client_ip)
+    # location = ip_api(client_ip)
+    # https://developers.cloudflare.com/network/ip-geolocation/
+    location = request.headers.get("CF-IPCountry", ip_api(client_ip))
     try:
         resp = requests.post(
             "https://www.google.com/recaptcha/api/siteverify",

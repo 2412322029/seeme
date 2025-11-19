@@ -41,6 +41,8 @@ def get_mcinfo(type: str, address: str):
 @api_bp.route("/get_deployment_info", methods=["GET"])
 def get_deployment_info():
     access_count = get_data("access_count")
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
+    location = request.headers.get("CF-IPCountry", "cf-unknown")
     try:
         access_count = int(access_count)
     except Exception:
@@ -49,6 +51,8 @@ def get_deployment_info():
         "access_count": access_count,
         "deploy_time": deployment_info_data.get("deploy_time", "unknown"),
         "git_hash": deployment_info_data.get("git_hash", "unknown"),
+        "requester_ip": ip,
+        "requester_location": location,
     }
     access_count = access_count + 1
     set_data("access_count", str(access_count))
@@ -143,3 +147,75 @@ def proxy():
         return resp
     except requests.RequestException as e:
         return jsonify({"error": str(e)}), 400
+
+
+@api_bp.route("/redis", methods=["GET"])
+def redis_info():
+    if request.headers.get("API-KEY") != SECRET_KEY:
+        return jsonify({"error": "Invalid API key"}), 403
+    try:
+        info = r.info()
+        return jsonify(info), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+logpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "log")
+MAX_READ_BYTES = 2 * 1024 * 1024  # 最大读取 2MB
+ALLOWED_EXT = (".log", ".txt", ".json")
+
+
+@api_bp.route("/logfilelist", methods=["GET"])
+def logfilelist():
+    if request.headers.get("API-KEY") != SECRET_KEY:
+        return jsonify({"error": "Invalid API key"}), 403
+    try:
+        files = []
+        for entry in os.listdir(logpath):
+            full_path = os.path.join(logpath, entry)
+            if os.path.isfile(full_path) and entry.lower().endswith(ALLOWED_EXT):
+                files.append(entry)
+        return jsonify({"files": files}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/logfile", methods=["GET"])
+def logfile():
+    if request.headers.get("API-KEY") != SECRET_KEY:
+        return jsonify({"error": "Invalid API key"}), 403
+    filename = request.args.get("filename", "").strip()
+    if not filename:
+        return jsonify({"error": "Filename parameter is required"}), 400
+    basename = os.path.basename(filename)
+    if basename != filename:
+        return jsonify({"error": "Invalid filename"}), 400
+    if not re.match(r"^[A-Za-z0-9_.-]+$", basename):
+        return jsonify({"error": "Filename contains invalid characters"}), 400
+    if not basename.lower().endswith(ALLOWED_EXT):
+        return jsonify({"error": "Unsupported file extension"}), 400
+    log_file = os.path.join(logpath, basename)
+    try:
+        if os.path.commonpath([os.path.abspath(log_file), os.path.abspath(logpath)]) != os.path.abspath(logpath):
+            return jsonify({"error": "Invalid filename path"}), 400
+    except Exception:
+        return jsonify({"error": "Invalid filename path"}), 400
+    if not os.path.exists(log_file) or not os.path.isfile(log_file):
+        return jsonify({"error": "File not found"}), 404
+    try:
+        size = os.path.getsize(log_file)
+        # 如果文件较大，只返回最后一部分并告知已截断
+        if size <= MAX_READ_BYTES:
+            with open(log_file, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            return Response(content, mimetype="text/plain"), 200
+        else:
+            with open(log_file, "rb") as f:
+                f.seek(-MAX_READ_BYTES, os.SEEK_END)
+                tail = f.read()
+            # 解码并标记已截断
+            text = tail.decode("utf-8", errors="replace")
+            header = f"--- FILE TRUNCATED: returned last {MAX_READ_BYTES} bytes of {basename} ---\n"
+            return Response(header + text, mimetype="text/plain"), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
