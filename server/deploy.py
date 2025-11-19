@@ -1,5 +1,5 @@
+import json
 import os
-import re
 import subprocess
 import time
 import traceback
@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 from fabric import Connection
+
 from sum import compare_sum_txt
 
 # 加载.env文件中的配置
@@ -57,15 +58,11 @@ def build_frontend_with_copy():
 
 def update_deployment_info(DEPLOY_TIME, GIT_HASH):
     """
-    使用正则表达式更新 api/misc.py 中的部署时间和 Git 哈希值
+    更新 api/.deploy.json 中的部署时间和 Git 哈希值
     """
-    filename = Path("api") / "misc.py"
-    with open(filename, "r", encoding="utf8") as file:
-        content = file.read()
-    content = re.sub(r'"deploy_time": ".*?",', f'"deploy_time": "{DEPLOY_TIME}",', content)
-    content = re.sub(r'"git_hash": ".*?"', f'"git_hash": "{GIT_HASH}"', content)
+    filename = Path("api") / ".deploy.json"
     with open(filename, "w", encoding="utf8") as file:
-        file.write(content)
+        file.write(json.dumps({"deploy_time": f"{DEPLOY_TIME}", "git_hash": f"{GIT_HASH}"}))
     print("Deployment info updated successfully.")
 
 

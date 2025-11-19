@@ -1,15 +1,25 @@
 import json
+import os
 import re
+import time
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import requests
 from flask import Response, jsonify, request
+
 from util.ai import completion_api, del_cache
 from util.config import SECRET_KEY, cfg
 from util.mcinfo import mcinfo
 from util.rediscache import get_data, r, set_data
 
 from . import api_bp
+
+deployfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".deploy.json")
+if not os.path.exists(deployfile):
+    with open(deployfile, "w", encoding="utf-8") as f:
+        json.dump({"deploy_time": f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}", "git_hash": ""}, f)
+with open(deployfile, "r", encoding="utf-8") as f:
+    deployment_info_data = json.load(f)
 
 
 def is_valid_address(address: str) -> bool:
@@ -37,8 +47,8 @@ def get_deployment_info():
         access_count = 0
     deployment_info = {
         "access_count": access_count,
-        "deploy_time": "2025-11-18 20:53:41",
-        "git_hash": "05fd9ca",
+        "deploy_time": deployment_info_data.get("deploy_time", "unknown"),
+        "git_hash": deployment_info_data.get("git_hash", "unknown"),
     }
     access_count = access_count + 1
     set_data("access_count", str(access_count))

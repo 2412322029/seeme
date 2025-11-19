@@ -20,3 +20,4 @@ server/sum.txt
 server/1.py
 server/api/vpn.py
 server/log/
+server/api/.deploy.json
