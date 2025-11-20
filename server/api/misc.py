@@ -3,7 +3,7 @@ import os
 import re
 import time
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
-
+from util.logger import logger
 import requests
 from flask import Response, jsonify, request
 
@@ -83,6 +83,7 @@ def del_xlog_cache():
     if key != SECRET_KEY:
         return jsonify({"error": "Invalid key in request args"}), 403
     try:
+        logger.info("Deleting xlog cache from Redis")
         return f"已删除{r.delete('xlog')}"
     except Exception as e:
         return str(e)
@@ -105,6 +106,7 @@ def proxy_xlog():
         if not response.json().get("count") == 0:
             r.set("xlog", json.dumps(response.json()), ex=3600 * 24)
     else:
+        logger.error(f"Failed to fetch xlog data: {response.status_code} {response.text}")
         return jsonify({"error": "Failed to fetch data"}), 500
     return response.json()
 

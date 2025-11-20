@@ -1,7 +1,9 @@
 import json
 
 from flask import jsonify, request
+
 from util.config import SECRET_KEY
+from util.logger import logger
 from util.rediscache import del_data, get_1type_data, get_all_types, get_all_types_data, get_data, get_limit, put_data, set_data, set_limit
 
 from . import api_bp
@@ -80,8 +82,10 @@ def del_info():
     info_type = request.json.get("type")
     report_time = request.json.get("report_time")
     if info_type in get_all_types():
+        data = get_1type_data(info_type, report_time)
         removed_count = del_data(info_type, report_time)
         if removed_count > 0:
+            logger.info(f"Removed info {data}")
             return jsonify({"message": f"Removed {removed_count} item(s) from {info_type}"}), 200
         else:
             return jsonify({"message": "No items found with the specified report_time"}), 404

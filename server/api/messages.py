@@ -7,6 +7,7 @@ from flask import jsonify, request
 
 from util.config import SECRET_KEY, cfg
 from util.ip import ip_api
+from util.logger import logger
 from util.notification import notify
 from util.rediscache import del_data, key_to_ts, r
 
@@ -156,9 +157,10 @@ def del_message():
             report_time = float(report_time)
         except Exception:
             return jsonify({"error": "invalid report_time"}), 400
-
+        data = r.hget("message", report_time)
         removed_count = del_data("message", report_time)
         if removed_count > 0:
+            logger.info(f"Removed message {data}")
             return jsonify({"message": f"Removed {removed_count} item(s) from message"}), 200
         else:
             return jsonify({"message": "No items found with the specified report_time"}), 404
