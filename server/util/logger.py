@@ -18,8 +18,8 @@ class RequestFormatter(logging.Formatter):
             ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
             record.remote_addr = request.headers.get("CF-Connecting-IP", ip)
         else:
-            record.url = None
-            record.remote_addr = None
+            record.url = ""
+            record.remote_addr = ""
         return super().format(record)
 
 
@@ -28,5 +28,5 @@ file_handler = RotatingFileHandler(
     maxBytes=1024 * 1024 * 5,
     backupCount=5,
 )
-file_handler.setFormatter(RequestFormatter("%(asctime)s %(levelname)s %(remote_addr)s - %(url)s : %(message)s [in %(filename)s:%(lineno)d]"))
+file_handler.setFormatter(RequestFormatter("%(asctime)s %(levelname)s %(threadName)s %(remote_addr)s - %(url)s [in %(filename)s:%(lineno)d] : %(message)s "))
 logger.addHandler(file_handler)

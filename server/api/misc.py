@@ -41,7 +41,8 @@ def get_mcinfo(type: str, address: str):
 @api_bp.route("/get_deployment_info", methods=["GET"])
 def get_deployment_info():
     access_count = get_data("access_count")
-    ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
+    CF_Connecting_IP = request.headers.get("CF-Connecting-IP") or request.remote_addr
+    Forwarded_ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")
     location = request.headers.get("CF-IPCountry", "cf-unknown")
     try:
         access_count = int(access_count)
@@ -51,7 +52,8 @@ def get_deployment_info():
         "access_count": access_count,
         "deploy_time": deployment_info_data.get("deploy_time", "unknown"),
         "git_hash": deployment_info_data.get("git_hash", "unknown"),
-        "requester_ip": ip,
+        "requester_ip": f"{CF_Connecting_IP}",
+        "forwarded_ip": Forwarded_ip,
         "requester_location": location,
     }
     access_count = access_count + 1
