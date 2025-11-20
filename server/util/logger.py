@@ -15,7 +15,8 @@ class RequestFormatter(logging.Formatter):
     def format(self, record):
         if has_request_context():
             record.url = request.url
-            record.remote_addr = request.remote_addr
+            ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
+            record.remote_addr = request.headers.get("CF-Connecting-IP", ip)
         else:
             record.url = None
             record.remote_addr = None
