@@ -1,5 +1,4 @@
 import os
-import re
 import time
 
 from flask import Response, jsonify, request
@@ -35,7 +34,8 @@ def logfilelist():
         files = []
         for entry in os.listdir(logpath):
             full_path = os.path.join(logpath, entry)
-            if os.path.isfile(full_path) and (entry.lower().endswith(ALLOWED_EXT) or entry.lower().split(".")[:-1].endswith(".log")):
+            # 支持 .log/.txt/.json 结尾，或形如 gunicorn_access.log.2025-10-30 这类以 .log. 为子串的文件
+            if os.path.isfile(full_path) and (entry.lower().endswith(ALLOWED_EXT) or ".log." in entry.lower() or entry.lower().startswith("gunicorn_access.log")):
                 try:
                     size = os.path.getsize(full_path)
                     mtime = os.path.getmtime(full_path)
@@ -59,9 +59,8 @@ def logfile():
     basename = os.path.basename(filename)
     if basename != filename:
         return jsonify({"error": "Invalid filename"}), 400
-    if not re.match(r"^[A-Za-z0-9_.-]+$", basename):
-        return jsonify({"error": "Filename contains invalid characters"}), 400
-    if not basename.lower().endswith(ALLOWED_EXT):
+    # 支持 .log/.txt/.json 结尾，或形如 gunicorn_access.log.2025-10-30 这类以 .log. 为子串的文件
+    if not (basename.lower().endswith(ALLOWED_EXT) or ".log." in basename.lower() or basename.lower().startswith("gunicorn_access.log")):
         return jsonify({"error": "Unsupported file extension"}), 400
     log_file = os.path.join(logpath, basename)
     try:
