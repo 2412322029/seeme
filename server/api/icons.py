@@ -1,6 +1,7 @@
 import os
 
 from flask import jsonify, request
+
 from util.config import SECRET_KEY
 
 from . import api_bp
@@ -39,3 +40,20 @@ def get_allIcon():
         return jsonify(filenames), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# @api_bp.route("/exe_icon/<path:filename>", methods=["GET"])
+# def exe_icon(filename):
+#     safe_name = os.path.basename(filename or "")
+#     if not safe_name:
+#         return jsonify({"error": "Invalid filename"}), 400
+
+#     # Only allow PNG files
+#     if not safe_name.lower().endswith(".png"):
+#         return jsonify({"error": "Invalid file type, only .png allowed"}), 400
+
+#     file_path = os.path.join(UPLOAD_ICON_FOLDER, safe_name)
+#     if not os.path.isfile(file_path):
+#         return jsonify({"error": "File not found"}), 404
+
+#     return send_from_directory(UPLOAD_ICON_FOLDER, safe_name)

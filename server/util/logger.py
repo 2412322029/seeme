@@ -1,14 +1,13 @@
 import logging
-import os
+import pathlib
 from logging.handlers import RotatingFileHandler
 
 from flask import has_request_context, request
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-if os.path.exists("log") is False:
-    os.mkdir("log")
+logpath = pathlib.Path(__file__).parent.parent / "log"
+logpath.mkdir(exist_ok=True)
 
 
 class RequestFormatter(logging.Formatter):
@@ -24,7 +23,7 @@ class RequestFormatter(logging.Formatter):
 
 
 file_handler = RotatingFileHandler(
-    filename="log/app.log",
+    filename=logpath / "app.log",
     maxBytes=1024 * 1024 * 5,
     backupCount=5,
 )

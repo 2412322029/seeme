@@ -1,16 +1,16 @@
 import multiprocessing
-import os
+import pathlib
 
 # 工作进程数，通常设置为 (CPU核心数 * 2) + 1
 workers = multiprocessing.cpu_count() * 2 + 1
 threads = 2  # 每个工作进程的线程数
 bind = "127.0.0.1:5000"
-pidfile = "/var/www/seeme/gunicorn.pid"
-logdir = "/var/www/seeme/log"
-accesslog = f"{logdir}/gunicorn_access.log"  # 访问日志文件
-errorlog = f"{logdir}/gunicorn_error.log"  # 错误日志文件
-if not os.path.exists(logdir):
-    os.makedirs(logdir)
+p = pathlib.Path(__file__).parent
+pidfile = str(p / "gunicorn.pid")
+logdir = p / "log"
+pathlib.Path.mkdir(logdir, exist_ok=True)
+accesslog = str(logdir / "gunicorn_access.log")  # 访问日志文件
+errorlog = str(logdir / "gunicorn_error.log")  # 错误日志文件
 loglevel = "info"  # 日志级别
 timeout = 30  # 超时时间
 
